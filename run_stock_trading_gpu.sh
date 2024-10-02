@@ -24,7 +24,7 @@ act_dim=29
 dataset_path="./stock_trading_trajectories.pkl"
 
 # Device
-device=1
+device='gpu'
 
 # Pretrained language model
 pretrained_lm="gpt2"
@@ -39,7 +39,7 @@ description="${pretrained_lm}_pretrained-ratio=${sample_ratio}_${description}"
 outdir="checkpoints/${env}_${dataset}_${description}_${seed}"
 
 # Run the experiment
-CUDA_VISIBLE_DEVICES=${gpu} ~/gits/FinRL-Tutorials/.conda/bin/python experiment.py \
+CUDA_VISIBLE_DEVICES=${gpu} python experiment.py \
     --device ${device} \
     --env ${env} \
     --dataset ${dataset} \
