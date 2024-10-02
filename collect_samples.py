@@ -10,7 +10,8 @@ train = pd.read_csv('train_data.csv')
 train = train.set_index(train.columns[0])
 train.index.names = ['']
 
-model_a2c = A2C.load("agent_a2c")
+# model_a2c = A2C.load("agent_a2c")
+model_a2c = A2C.load(TRAINED_MODEL_DIR + "/agent_a2c")
 
 print(train.head())
 print(train.close.values)
