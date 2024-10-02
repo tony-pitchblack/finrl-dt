@@ -22,7 +22,7 @@ from finrl.config import INDICATORS, TRAINED_MODEL_DIR
 import pandas as pd
 
 # prep for training env. We need train.csv for such prep of environment.
-trade = pd.read_csv('~/gits/FinRL-Tutorials/1-Introduction/Stock_NeurIPS2018/trade_data.csv')
+trade = pd.read_csv('trade_data.csv')
 # Preprocessing
 trade = trade.set_index(trade.columns[0])
 trade.index.names = ['']
@@ -324,7 +324,7 @@ def experiment(
                 f"target_{target_rew}_length_mean": np.mean(lengths),
                 f"target_{target_rew}_length_std": np.std(lengths),
                 f"target_{target_rew}_noromalized_return_mean": env.get_normalized_score(np.mean(returns)),
-                f"target_{target_rew}_videos": [wandb.Video(video_path, fps=30, format="mp4") for video_path in video_paths]
+                f"target_{target_rew}_videos": []
             }
 
         return fn

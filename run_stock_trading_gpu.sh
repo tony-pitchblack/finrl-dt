@@ -14,7 +14,6 @@ num_steps_per_iter=1
 max_iters=40
 num_eval_episodes=20
 
-
 # Environment parameters
 env=stock_trading
 dataset=your_dataset_name
@@ -22,10 +21,10 @@ sample_ratio=1
 K=20  # Context length
 state_dim=291
 act_dim=29
-dataset_path="/Users/syyun/gits/LaMo-2023/experiment-finrl/stock_trading_trajectories.pkl"
+dataset_path="./stock_trading_trajectories.pkl"
 
 # Device
-device="cpu"
+device=1
 
 # Pretrained language model
 pretrained_lm="gpt2"
@@ -40,7 +39,7 @@ description="${pretrained_lm}_pretrained-ratio=${sample_ratio}_${description}"
 outdir="checkpoints/${env}_${dataset}_${description}_${seed}"
 
 # Run the experiment
-CUDA_VISIBLE_DEVICES=${gpu} python experiment.py \
+CUDA_VISIBLE_DEVICES=${gpu} ~/gits/FinRL-Tutorials/.conda/bin/python experiment.py \
     --device ${device} \
     --env ${env} \
     --dataset ${dataset} \
