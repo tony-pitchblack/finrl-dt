@@ -22,7 +22,7 @@ sample_ratio=1
 K=20  # Context length
 state_dim=291
 act_dim=29
-dataset_path="/Users/syyun/gits/LaMo-2023/experiment-finrl/stock_trading_trajectories.pkl"
+dataset_path="stock_trading_trajectories.pkl"
 
 # Device
 device="cpu"
