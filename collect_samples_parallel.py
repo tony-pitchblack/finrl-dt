@@ -1,3 +1,11 @@
+import os
+# Set environment variables to limit threads
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["OPENBLAS_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
+os.environ["VECLIB_MAXIMUM_THREADS"] = "1"
+os.environ["NUMEXPR_NUM_THREADS"] = "1"
+
 import numpy as np
 import pandas as pd
 import pickle
@@ -6,15 +14,17 @@ import multiprocessing
 from datetime import datetime
 from finrl.config import INDICATORS, TRAINED_MODEL_DIR
 
-def collect_single_trajectory(args):
-    # Unpack the arguments
-    model_path, env_kwargs, train_data_file = args
+def init_worker(model, train_data):
+    # Set global variables for the worker processes
+    global model_a2c_global
+    global train_data_global
+    model_a2c_global = model
+    train_data_global = train_data
 
-    # Load the data within the process
-    import pandas as pd
-    train_data = pd.read_csv(train_data_file)
-    train_data = train_data.set_index(train_data.columns[0])
-    train_data.index.names = ['']
+def collect_single_trajectory(env_kwargs):
+    # Use the global model and data
+    model_a2c = model_a2c_global
+    train_data = train_data_global
 
     # Initialize the environment within the process
     from finrl.meta.env_stock_trading.env_stocktrading import StockTradingEnv
@@ -24,10 +34,6 @@ def collect_single_trajectory(args):
         risk_indicator_col='vix',
         **env_kwargs
     )
-
-    # Load the model within the process
-    from stable_baselines3 import A2C
-    model_a2c = A2C.load(model_path)
 
     observations = []
     actions = []
@@ -60,11 +66,16 @@ def collect_single_trajectory(args):
     return trajectory
 
 if __name__ == "__main__":
-    # Load the training data
+    # Load the training data once
     train_data_file = 'train_data.csv'
     train = pd.read_csv(train_data_file)
     train = train.set_index(train.columns[0])
     train.index.names = ['']
+
+    # Load the model once
+    from stable_baselines3 import A2C
+    model_path = TRAINED_MODEL_DIR + "/agent_a2c"
+    model_a2c = A2C.load(model_path)
 
     # Define environment parameters
     stock_dimension = len(train.tic.unique())
@@ -85,33 +96,32 @@ if __name__ == "__main__":
         "reward_scaling": 1e-4
     }
 
-    model_path = TRAINED_MODEL_DIR + "/agent_a2c"
-
     # Number of trajectories to collect
-    num_episodes = 100  # Adjust this number as needed
-
-    # Prepare arguments for each process
-    args_list = [
-        (model_path, env_kwargs, train_data_file)
-        for _ in range(num_episodes)
-    ]
+    total_episodes = 100  # Adjust this number as needed
 
     # Detect the number of available CPU cores
     num_cores = multiprocessing.cpu_count()
     print(f"Detected {num_cores} CPU cores.")
 
-    # Use multiprocessing to collect trajectories in parallel
-    # Number of worker processes is set to the number of CPU cores
-    with multiprocessing.Pool(processes=num_cores) as pool:
+    # Limit the number of worker processes to avoid resource exhaustion
+    max_workers = num_cores  # Adjust 16 to a suitable number if needed
+    print(f"Using {max_workers} worker processes.")
+
+    # Prepare the environment arguments list
+    env_args_list = [env_kwargs for _ in range(total_episodes)]
+
+    # Use a persistent Pool and initialize with shared resources
+    with multiprocessing.Pool(processes=max_workers, initializer=init_worker, initargs=(model_a2c, train)) as pool:
         trajectories = list(tqdm(
-            pool.imap(collect_single_trajectory, args_list),
-            total=num_episodes
+            pool.imap_unordered(collect_single_trajectory, env_args_list),
+            total=total_episodes,
+            desc="Collecting Trajectories"
         ))
 
     # Save the trajectories to a pickle file
     current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    output_filename = f'trajectories_a2c_{num_episodes}_{current_time}.pkl'
+    output_filename = f'trajectories_a2c_{total_episodes}_{current_time}.pkl'
     with open(output_filename, 'wb') as f:
         pickle.dump(trajectories, f)
 
-    print(f"Collected {num_episodes} trajectories and saved to '{output_filename}'")
+    print(f"Collected {total_episodes} trajectories and saved to '{output_filename}'")
