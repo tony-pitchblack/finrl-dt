@@ -22,7 +22,7 @@ from finrl.config import INDICATORS, TRAINED_MODEL_DIR
 import pandas as pd
 
 # prep for training env. We need train.csv for such prep of environment.
-trade = pd.read_csv('~/gits/FinRL-Tutorials/1-Introduction/Stock_NeurIPS2018/trade_data.csv')
+trade = pd.read_csv('trade_data.csv')
 # Preprocessing
 trade = trade.set_index(trade.columns[0])
 trade.index.names = ['']
@@ -117,7 +117,7 @@ def experiment(
     elif env_name == "kitchen":
         dataset_path = f"../data/kitchen/{env_name}-{dataset}{ratio_str}-v0.pkl"
     elif env_name == "stock_trading":
-        dataset_path = f"./stock_trading_trajectories.pkl"
+        dataset_path = variant["dataset_path"]
     else: 
         raise NotImplementedError
     with open(dataset_path, "rb") as f:
