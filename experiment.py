@@ -117,7 +117,7 @@ def experiment(
     elif env_name == "kitchen":
         dataset_path = f"../data/kitchen/{env_name}-{dataset}{ratio_str}-v0.pkl"
     elif env_name == "stock_trading":
-        dataset_path = f"./stock_trading_trajectories.pkl"
+        dataset_path = variant["dataset_path"]
     else: 
         raise NotImplementedError
     with open(dataset_path, "rb") as f:
