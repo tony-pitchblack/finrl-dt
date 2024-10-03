@@ -63,49 +63,16 @@ def experiment(
     device = variant.get("device", "cuda")
     env_name, dataset = variant["env"], variant["dataset"]
     model_type = variant["model_type"]
-    description = variant["description"]
-    seed = variant["seed"]
     
-    if env_name == "hopper":
-        env = gym.make("hopper-medium-v2")
-        max_ep_len = 1000
-        env_targets = [3600, 2600, 2200, 1800]  # evaluation conditioning targets
-        scale = 1000.0  # normalization for rewards/returns
-    elif env_name == "halfcheetah":
-        env = gym.make("halfcheetah-medium-v2")
-        max_ep_len = 1000
-        env_targets = [12000, 8000, 6000, 4500]
-        scale = 1000.0
-    elif env_name == "walker2d":
-        env = gym.make("walker2d-medium-v2")
-        max_ep_len = 1000
-        env_targets = [5000, 4000, 3000, 2500]
-        scale = 1000.0
-    elif env_name == 'reacher2d':
-        from decision_transformer.envs.reacher_2d import Reacher2dEnv
-        env = Reacher2dEnv()
-        max_ep_len = 100
-        env_targets = [76, 40]
-        scale = 10.
-    elif env_name == "kitchen":
-        env = gym.make("kitchen-complete-v0")
-        max_ep_len = 1000
-        env_targets = [5, 4, 3, 2, 1]
-        scale = 1.0
-    elif env_name == "stock_trading":
+    if env_name == "stock_trading":
         print("stock trading env.")
-        env = StockTradingEnv(df = trade, turbulence_threshold = 70,risk_indicator_col='vix', **env_kwargs)
+        env = StockTradingEnv(df = trade, turbulence_threshold = 70, risk_indicator_col='vix', **env_kwargs)
         max_ep_len = 755
-        env_targets = [1_000_000, 1_250_000, 1_500_000, 1_750_000, 2_000_000] # fix this!
+        env_targets = [1_000_000, 1_250_000, 1_500_000, 1_750_000, 2_000_000, 2_250_000, 2_500_000, 2_750_000, 3_000_000, 3_250_000, 3_500_000, 3_750_000, 4_000_000, 4_250_000, 4_500_000, 4_750_000, 5_000_000] # fix this!
         # Set scale for reward
         scale = 1e6
     else:
         raise NotImplementedError
-
-    if model_type == "bc":
-        env_targets = env_targets[
-            :1
-        ]  # since BC ignores target, no need for different evaluations
 
     state_dim = env.observation_space.shape[0]
     act_dim = env.action_space.shape[0]
@@ -121,6 +88,7 @@ def experiment(
         dataset_path = variant["dataset_path"]
     else: 
         raise NotImplementedError
+    # load train dataset - trajectories sampled from training env with some DRL policies
     with open(dataset_path, "rb") as f:
         trajectories = pickle.load(f)
     
@@ -128,9 +96,6 @@ def experiment(
     mode = variant.get("mode", "normal")
     states, traj_lens, returns = [], [], []
     for path in trajectories:
-        if mode == "delayed":  # delayed: all rewards moved to end of trajectory
-            path["rewards"][-1] = path["rewards"].sum()
-            path["rewards"][:-1] = 0.0
         states.append(path["observations"])
         traj_lens.append(len(path["observations"]))
         returns.append(-path["rewards"].sum())
@@ -165,6 +130,7 @@ def experiment(
         timesteps += traj_lens[sorted_inds[ind]]
         num_trajectories += 1
         ind -= 1
+    print("num_trajectories: ", num_trajectories)
     sorted_inds = sorted_inds[-num_trajectories:]
 
     # used to reweight sampling so we sample according to timesteps instead of trajectories
@@ -182,23 +148,6 @@ def experiment(
         for i in range(batch_size):
             traj = trajectories[int(sorted_inds[batch_inds[i]])]
             si = random.randint(0, traj["rewards"].shape[0] - 1)
-
-            # debug
-            # print("Trajectory observations shape:", traj["observations"].shape)
-            # print("si:", si)
-            # print("max_len:", max_len)
-            # print("state_dim:", state_dim)
-
-            obs_slice = traj["observations"][si : si + max_len]
-            # print("obs_slice shape before reshape:", obs_slice.shape)
-
-            total_elements = obs_slice.size
-            # print("Total elements in obs_slice:", total_elements)
-
-            # Attempt to reshape
-            s_reshaped = obs_slice.reshape(1, -1, state_dim)
-            # print("s_reshaped shape:", s_reshaped.shape)
-
 
             # get sequences from dataset
             s.append(traj["observations"][si : si + max_len].reshape(1, -1, state_dim))
@@ -276,7 +225,7 @@ def experiment(
         def fn(model):
             returns, lengths, video_paths = [], [], []
             os.makedirs(os.path.join(variant["outdir"], "videos", str(target_rew)), exist_ok=True)
-            for episode_index in range(num_eval_episodes):
+            for _ in range(num_eval_episodes):
                 with torch.no_grad():
                     if model_type == "dt":
                         ret, length = evaluate_episode_rtg(
@@ -291,9 +240,7 @@ def experiment(
                             mode=mode,
                             state_mean=state_mean,
                             state_std=state_std,
-                            device=device,
-                            # record_video = record_video,
-                            # video_path = video_path,
+                            device=device
                         )
                     else:
                         ret, length = evaluate_episode(
@@ -316,111 +263,99 @@ def experiment(
                 f"target_{target_rew}_return_std": np.std(returns),
                 f"target_{target_rew}_length_mean": np.mean(lengths),
                 f"target_{target_rew}_length_std": np.std(lengths),
-                # f"target_{target_rew}_noromalized_return_mean": env.get_normalized_score(np.mean(returns)),
                 f"target_{target_rew}_videos": []
             }
 
         return fn
 
-    print("model_type: ", model_type)    
-    if model_type == "dt":
-        print("training decision transformer")
-        model = DecisionTransformer(
-            args=variant,
-            state_dim=state_dim,
-            act_dim=act_dim,
-            max_length=K,
-            max_ep_len=max_ep_len,
-            hidden_size=variant["embed_dim"],
-            n_layer=variant["n_layer"],
-            n_head=variant["n_head"],
-            n_inner=4 * variant["embed_dim"],
-            activation_function=variant["activation_function"],
-            n_positions=1024,
-            resid_pdrop=variant["dropout"],
-            attn_pdrop=0.1,
-            mlp_embedding=variant["mlp_embedding"]
-        )
-            
-        if variant["adapt_mode"]:
-            if variant["lora"] == False:
-                for param in model.parameters():
+    print("Initializing decision transformer model with some adapters...")
+    model = DecisionTransformer(
+        args=variant,
+        state_dim=state_dim,
+        act_dim=act_dim,
+        max_length=K,
+        max_ep_len=max_ep_len,
+        hidden_size=variant["embed_dim"],
+        n_layer=variant["n_layer"],
+        n_head=variant["n_head"],
+        n_inner=4 * variant["embed_dim"],
+        activation_function=variant["activation_function"],
+        n_positions=1024,
+        resid_pdrop=variant["dropout"],
+        attn_pdrop=0.1,
+        mlp_embedding=variant["mlp_embedding"]
+    )
+    print("adapt mode: ", variant["adapt_mode"])
+    print("adapt lora: ", variant["lora"])
+    print("adapt embed: ", variant["adapt_embed"])
+
+    if variant["adapt_mode"]: # we adapt or pretrained llm with some specifications
+        if variant["lora"] == False:
+            for param in model.parameters():
+                param.requires_grad = False
+        else:
+            print("adapt lora.")
+            lora.mark_only_lora_as_trainable(model, bias='lora_only')
+        if variant["adapt_wte"]:
+            print("adapt wte.")
+            for param in model.transformer.wte.parameters():
+                param.requires_grad = True
+        if variant["adapt_wpe"]:
+            print("adapt wpe.")
+            for param in model.transformer.wpe.parameters():
+                param.requires_grad = True
+        if variant["adapt_embed"]:
+            print("adapt embeddings.")
+            # adapt the embeddings in DecisionTransformer
+            for name, param in model.named_parameters():
+                if ("embed" in name or "predict" in name):
+                    param.requires_grad = True
+        if variant["adapt_ln"]:
+            print("adapt layer norms.")
+            # adapt the LayerNorm in the transformer's blocks
+            for block in model.transformer.h:
+                for param in block.ln_1.parameters():
+                    param.requires_grad = True
+                for param in block.ln_2.parameters():
+                    param.requires_grad = True
+            # adapt the final LayerNorm in the transformer
+            for param in model.transformer.ln_f.parameters():
+                param.requires_grad = True
+        if variant["adapt_attn"]:
+            print("adapt attention.")
+            for block in model.transformer.h:
+            # adapt the attention weights and biases
+                for param in block.attn.parameters():
+                    param.requires_grad = True
+        if variant["adapt_ff"]:
+            print("adapt feed-forward.")
+            for block in model.transformer.h:
+                # adapt the feed_forward weights and biases
+                for param in block.mlp.parameters():
+                    param.requires_grad = True
+        if variant["only_adapt_last_two_blocks"]:
+            print("for transformer, only adapt the last two blocks.")
+            for block in model.transformer.h[0:-2]:
+                for param in block.parameters():
                     param.requires_grad = False
-            else:
-                print("adapt lora.")
-                lora.mark_only_lora_as_trainable(model, bias='lora_only')
-                # lora.mark_only_lora_as_trainable(model, bias='all')
-                # NOTE: Don't put this part below other adaptation part.
-            if variant["adapt_wte"]:
-                print("adapt wte.")
-                for param in model.transformer.wte.parameters():
+        if variant["adapt_last_two_blocks"]:
+            print("for transformer, adapt the last two blocks.")
+            for block in model.transformer.h[-2:]:
+                for param in block.parameters():
                     param.requires_grad = True
-            if variant["adapt_wpe"]:
-                print("adapt wpe.")
-                for param in model.transformer.wpe.parameters():
-                    param.requires_grad = True
-            if variant["adapt_embed"]:
-                print("adapt embeddings.")
-                # adapt the embeddings in DecisionTransformer
-                for name, param in model.named_parameters():
-                    if ("embed" in name or "predict" in name):
-                        param.requires_grad = True
-            if variant["adapt_ln"]:
-              print("adapt layer norms.")
-              # adapt the LayerNorm in the transformer's blocks
-              for block in model.transformer.h:
-                  for param in block.ln_1.parameters():
-                      param.requires_grad = True
-                  for param in block.ln_2.parameters():
-                      param.requires_grad = True
-              # adapt the final LayerNorm in the transformer
-              for param in model.transformer.ln_f.parameters():
-                  param.requires_grad = True
-            if variant["adapt_attn"]:
-                print("adapt attention.")
-                for block in model.transformer.h:
-                # adapt the attention weights and biases
-                    for param in block.attn.parameters():
-                        param.requires_grad = True
-            if variant["adapt_ff"]:
-                print("adapt feed-forward.")
-                for block in model.transformer.h:
-                    # adapt the feed_forward weights and biases
-                    for param in block.mlp.parameters():
-                        param.requires_grad = True
-            if variant["only_adapt_last_two_blocks"]:
-                print("for transformer, only adapt the last two blocks.")
-                for block in model.transformer.h[0:-2]:
-                    for param in block.parameters():
-                        param.requires_grad = False
-            if variant["adapt_last_two_blocks"]:
-                print("for transformer, adapt the last two blocks.")
-                for block in model.transformer.h[-2:]:
-                    for param in block.parameters():
-                        param.requires_grad = True
-        else: 
-            print("fintune all.")
-            
-    elif model_type == "bc":
-        print("training behavior cloning")
-        model = MLPBCModel(
-            state_dim=state_dim,
-            act_dim=act_dim,
-            max_length=K,
-            hidden_size=variant["embed_dim"],
-            n_layer=variant["n_layer"],
-        )
-    else:
-        raise NotImplementedError
+    else: 
+        print("fintune all.")
 
     trainable_param_size = 0
     frozen_param_size = 0
+
     for name, param in model.named_parameters():
         if "transformer" not in name: continue
         if param.requires_grad:
             trainable_param_size += param.numel()
         else:
             frozen_param_size += param.numel()
+    
     print(f"Trainable parameters: {trainable_param_size}")
     print(f"Frozen parameters: {frozen_param_size}")
     print(f"Trainable ratio: {trainable_param_size/(trainable_param_size + frozen_param_size)}")
@@ -436,32 +371,16 @@ def experiment(
     
     visualize = variant["visualize"]
 
-    if "dt" in model_type:
-        trainer = SequenceTrainer(
-            args=variant,
-            model=model,
-            optimizer=optimizer,
-            batch_size=batch_size,
-            get_batch=get_batch,
-            # train_nlp_dataset=train_nlp_dataloader,
-            # eval_nlp_dataset=eval_nlp_dataloader,
-            scheduler=scheduler,
-            loss_fn=lambda s_hat, a_hat, r_hat, s, a, r: torch.mean((a_hat - a) ** 2),
-            eval_fns=[eval_episodes(tar, visualize) for tar in env_targets],
-        )
-    elif model_type == "bc":
-        trainer = ActTrainer(
-            args=variant,
-            model=model,
-            optimizer=optimizer,
-            batch_size=batch_size,
-            get_batch=get_batch,
-            # train_nlp_dataset=train_nlp_dataloader,
-            # eval_nlp_dataset=eval_nlp_dataloader,
-            scheduler=scheduler,
-            loss_fn=lambda s_hat, a_hat, r_hat, s, a, r: torch.mean((a_hat - a) ** 2),
-            eval_fns=[eval_episodes(tar, visualize) for tar in env_targets],
-        )
+    trainer = SequenceTrainer(
+        args=variant,
+        model=model,
+        optimizer=optimizer,
+        batch_size=batch_size,
+        get_batch=get_batch,
+        scheduler=scheduler,
+        loss_fn=lambda s_hat, a_hat, r_hat, s, a, r: torch.mean((a_hat - a) ** 2),
+        eval_fns=[eval_episodes(tar, visualize) for tar in env_targets],
+    )
 
     total_training_time = 0
     for iter in range(variant["max_iters"]):
