@@ -10,9 +10,9 @@ lmlr=1e-5
 weight_decay=1e-5
 dropout=0.1
 warmup_steps=2500
-num_steps_per_iter=1
+num_steps_per_iter=755
 max_iters=40
-num_eval_episodes=20
+num_eval_episodes=1
 
 # Environment parameters
 env=stock_trading
@@ -21,8 +21,8 @@ sample_ratio=1
 K=20  # Context length
 state_dim=291
 act_dim=29
-dataset_path="./stock_trading_trajectories.pkl"
-
+# dataset_path="./stock_trading_trajectories.pkl"
+dataset_path="./trajectories_a2c_100_2024-10-02_15-39-10.pkl"
 # Device
 device='cuda'
 

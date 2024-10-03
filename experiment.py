@@ -96,7 +96,7 @@ def experiment(
         print("stock trading env.")
         env = StockTradingEnv(df = trade, turbulence_threshold = 70,risk_indicator_col='vix', **env_kwargs)
         max_ep_len = 755
-        env_targets = [1_000_000, 1_200_000, 1_500_000]
+        env_targets = [1_000_000, 1_200_000, 1_500_000] # fix this!
         # Set scale for reward
         scale = 1e6
     else:
@@ -184,20 +184,20 @@ def experiment(
             si = random.randint(0, traj["rewards"].shape[0] - 1)
 
             # debug
-            print("Trajectory observations shape:", traj["observations"].shape)
-            print("si:", si)
-            print("max_len:", max_len)
-            print("state_dim:", state_dim)
+            # print("Trajectory observations shape:", traj["observations"].shape)
+            # print("si:", si)
+            # print("max_len:", max_len)
+            # print("state_dim:", state_dim)
 
             obs_slice = traj["observations"][si : si + max_len]
-            print("obs_slice shape before reshape:", obs_slice.shape)
+            # print("obs_slice shape before reshape:", obs_slice.shape)
 
             total_elements = obs_slice.size
-            print("Total elements in obs_slice:", total_elements)
+            # print("Total elements in obs_slice:", total_elements)
 
             # Attempt to reshape
             s_reshaped = obs_slice.reshape(1, -1, state_dim)
-            print("s_reshaped shape:", s_reshaped.shape)
+            # print("s_reshaped shape:", s_reshaped.shape)
 
 
             # get sequences from dataset
@@ -495,7 +495,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--mode", type=str, default="normal"
     )  # normal for standard setting, delayed for sparse
-    parser.add_argument("--K", type=int, default=20)
+    parser.add_argument("--K", type=int, default=100)
     parser.add_argument("--pct_traj", type=float, default=1.0)
     parser.add_argument("--batch_size", type=int, default=64)
     parser.add_argument("--model_type", type=str, default="dt")  # dt for decision transformer, bc for behavior cloning

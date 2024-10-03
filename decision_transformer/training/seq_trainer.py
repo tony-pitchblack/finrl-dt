@@ -15,6 +15,7 @@ class SequenceTrainer(Trainer):
             timesteps,
             attention_mask,
         ) = self.get_batch(self.batch_size)
+        print("train_step:timesteps", timesteps)
         
         action_target = torch.clone(actions)
         
@@ -28,6 +29,7 @@ class SequenceTrainer(Trainer):
         )
 
         self.step += 1
+        print("train_step:self.step", self.step)
         act_dim = action_preds.shape[2]
         action_preds = action_preds.reshape(-1, act_dim)[attention_mask.reshape(-1) > 0]
         action_target = action_target.reshape(-1, act_dim)[
@@ -43,13 +45,6 @@ class SequenceTrainer(Trainer):
             None,
         )
         print("loss:", loss)
-
-        # batch = next(self.train_nlp_dataset)
-        # lm_out = self.model.transformer_model(**batch)
-        # lm_loss = lm_out.loss
-        
-        # if self.args["co_training"]:
-        #     loss += self.args["co_lambda"] * lm_loss
         
         self.optimizer.zero_grad()
         loss.backward()
