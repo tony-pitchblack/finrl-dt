@@ -65,7 +65,6 @@ class DecisionTransformer(TrajectoryModel):
             self.hidden_size = config.n_embd
 
         else:
-            
             if args['lora']:
                 config = GPT2Config_LoRA.from_pretrained("gpt2")
                 self.transformer_model = GPT2LMHeadModel_LoRA(config)
@@ -79,12 +78,12 @@ class DecisionTransformer(TrajectoryModel):
                 # NOTE: If you comment two lines above, then we adopt non-pretrained 3-layer DT; otherwise we use the same config as the pretrained gpt2 model, but with random weights
                 self.transformer_model = GPT2LMHeadModel(config)
             
-            if args['random_weights_pretrained_lm']:      # Randomly initialize the weights
-                print("Randomly initializing the weights of the pretrained model...")
-                self.transformer_model.init_weights() # then we will only train the LoRA adapter weights
-
             hidden_size = config.n_embd
             self.hidden_size = config.n_embd
+
+        if args['random_weights_pretrained_lm']:      # Randomly initialize the weights
+            print("Randomly initializing the weights of the pretrained model...")
+            self.transformer_model.init_weights() # then we will only train the LoRA adapter weights
 
         if max_ep_len > config.n_positions and args["extend_positions"]:
             current_max_pos, embed_size = self.transformer.wpe.weight.shape
