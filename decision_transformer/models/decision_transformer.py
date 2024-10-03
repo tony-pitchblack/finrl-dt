@@ -90,22 +90,14 @@ class DecisionTransformer(TrajectoryModel):
             for name, param in self.transformer_model.named_parameters():
                 if 'weight' in name and 'lora' not in name.lower():
                     before_weights[name] = param.data.clone()
-                    
-            # Custom weight initialization
-            def init_weights(module):
-                if isinstance(module, (nn.Linear, nn.Embedding)):
-                    module.weight.data.normal_(mean=0.0, std=0.02)
-                    if isinstance(module, nn.Linear) and module.bias is not None:
-                        module.bias.data.zero_()
-                elif isinstance(module, nn.LayerNorm):
-                    module.bias.data.zero_()
-                    module.weight.data.fill_(1.0)
-                elif isinstance(module, Conv1D):
-                    module.weight.data.normal_(mean=0.0, std=0.02)
-                    module.bias.data.zero_()
-                # You may also need to handle other custom layers or modules here.
-
-            self.transformer_model.apply(init_weights)
+            
+            # Directly reinitialize all non-LoRA weights
+            for name, param in self.transformer_model.named_parameters():
+                if 'lora' not in name.lower():
+                    if 'weight' in name:
+                        nn.init.normal_(param.data, mean=0.0, std=0.02)
+                    elif 'bias' in name:
+                        nn.init.zeros_(param.data)
             
             # Check weights after initialization
             after_weights = {}
@@ -120,6 +112,7 @@ class DecisionTransformer(TrajectoryModel):
             print("Changed weight tensors:")
             for name in changed_weights:
                 print(f"  - {name}")
+
 
         if max_ep_len > config.n_positions and args["extend_positions"]:
             current_max_pos, embed_size = self.transformer.wpe.weight.shape
