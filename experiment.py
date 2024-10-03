@@ -277,15 +277,6 @@ def experiment(
             returns, lengths, video_paths = [], [], []
             os.makedirs(os.path.join(variant["outdir"], "videos", str(target_rew)), exist_ok=True)
             for episode_index in range(num_eval_episodes):
-                # record_video = (episode_index % (num_eval_episodes // 5) == 0) & visualize
-                # if dir doesn't exist, make it
-                # if record_video:
-                #     video_path = os.path.join(
-                #         variant["outdir"], "videos", str(target_rew), f"episode_{episode_index}.mp4"
-                #     )
-                #     video_paths.append(video_path)
-                # else: 
-                #     video_path = None
                 with torch.no_grad():
                     if model_type == "dt":
                         ret, length = evaluate_episode_rtg(
@@ -491,13 +482,6 @@ if __name__ == "__main__":
     )  # medium, medium-replay, medium-expert, expert
     # to load the dataset
     parser.add_argument("--dataset_path", type=str, required=True, help="Path to the trajectories.pkl file")
-
-
-    parser.add_argument(
-        "--mode", type=str, default="normal"
-    )  # normal for standard setting, delayed for sparse
-
-
     parser.add_argument(
         "--mode", type=str, default="normal"
     )  # normal for standard setting, delayed for sparse
