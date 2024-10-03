@@ -24,7 +24,7 @@ act_dim=29
 dataset_path="./stock_trading_trajectories.pkl"
 
 # Device
-device='gpu'
+device='cuda'
 
 # Pretrained language model
 # pretrained_lm="gpt2"
