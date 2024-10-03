@@ -74,7 +74,7 @@ def evaluate(args):
     model.eval()
 
     # Evaluate for different target rewards
-    target_rewards = [1_000_000, 1_250_000, 1_500_000, 1_750_000, 2_000_000]
+    target_rewards = [1_500_000]
     for target_rew in target_rewards:
         returns = []
         for _ in range(args.num_eval_episodes):
