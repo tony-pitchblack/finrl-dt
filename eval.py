@@ -64,7 +64,7 @@ def evaluate(args):
     )
     
     # Load pretrained weights
-    model.transformer_model.load_state_dict(torch.load(args.pretrained_lm_path))
+    model.transformer_model.load_state_dict(torch.load(args.pretrained_lm))
 
     # Load LoRA parameters
     lora_state_dict = torch.load(args.lora_path)
@@ -105,7 +105,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--lora_path", type=str, required=True, help="Path to the saved LoRA parameters")
     parser.add_argument("--pretrained_lm", type=str, required=True, help="Name or path of the pretrained language model")
-    parser.add_argument("--pretrained_lm_path", type=str, required=True, help="Path to the pretrained language model weights")
     parser.add_argument("--device", type=str, default="cuda")
     parser.add_argument("--env", type=str, default="stock_trading")
     parser.add_argument("--dataset", type=str, default="your_dataset_name")
