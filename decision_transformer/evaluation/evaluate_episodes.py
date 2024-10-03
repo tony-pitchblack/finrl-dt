@@ -85,6 +85,7 @@ def evaluate_episode_rtg(
     state_std=1.0,
     device="cuda",
     target_return=None,
+    target_reward_raw=None,
     mode="normal",
     # record_video=False,
     # video_path=None
@@ -186,7 +187,7 @@ def evaluate_episode_rtg(
 
         if done:
             import pickle
-            with open(f'total_asset_value_list_{target_return}.pkl', 'wb') as f:
+            with open(f'total_asset_value_list_{target_reward_raw}.pkl', 'wb') as f:
                 pickle.dump(total_asset_value_list, f)
 
             break

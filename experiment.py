@@ -287,6 +287,7 @@ def experiment(
                             max_ep_len=max_ep_len,
                             scale=scale,
                             target_return=target_rew / scale,
+                            target_reward_raw=target_rew,
                             mode=mode,
                             state_mean=state_mean,
                             state_std=state_std,
