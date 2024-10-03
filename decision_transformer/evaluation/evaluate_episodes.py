@@ -151,8 +151,10 @@ def evaluate_episode_rtg(
         # Initialize or update total asset value list
         if 'total_asset_value_list' not in locals():
             total_asset_value_list = [env.initial_amount]
-            print("total_asset_value_list[-1]: at t:", t, "is", total_asset_value_list[-1])
+            print("[1st] total_asset_value_list[-1]: at t:", t, "is", total_asset_value_list[-1])
         else:
+            print("reward:", reward)
+            print("adding reward to total_asset_value_list:rewad*env.reward_scaling", reward*env.reward_scaling)
             total_asset_value_list.append(total_asset_value_list[-1] + reward * env.reward_scaling)
             print("total_asset_value_list[-1]: at t:", t, "is", total_asset_value_list[-1])
         
@@ -174,7 +176,6 @@ def evaluate_episode_rtg(
         )
 
         episode_return += reward
-        print("episode_return (cumulative):", episode_return)
         episode_length += 1
         
         # if record_video and t % 2 == 0:
