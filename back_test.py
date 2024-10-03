@@ -1,4 +1,6 @@
 import sys
+import os
+import re
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -73,27 +75,56 @@ df_result_a2c = df_account_value_a2c.set_index(df_account_value_a2c.columns[0]) 
 result = pd.DataFrame()
 if if_using_a2c: result = pd.merge(result, df_result_a2c, how='outer', left_index=True, right_index=True)
 
-# Load the pickle file
-with open('./total_asset_value_list.pkl', 'rb') as f:
-    total_asset_value_list = pickle.load(f)
+# Function to load pickle files
+def load_pickle(file_path):
+    with open(file_path, 'rb') as f:
+        return pickle.load(f)
 
-# Create a new dataframe with the loaded data
-dt_target_df = pd.DataFrame(total_asset_value_list, columns=['dt_target_150000'])
-dt_target_df.index = result.index  # Assuming the dates align with the existing result dataframe
+# Get all relevant pickle files in the current directory
+pickle_files = [f for f in os.listdir('.') if f.startswith('total_asset_value_list_') and f.endswith('.pkl')]
 
-# Add the new data to the result dataframe
-result = pd.merge(result, dt_target_df, left_index=True, right_index=True)
+# Function to extract target reward from filename
+def extract_target_reward(filename):
+    match = re.search(r'_(\d+)_', filename)
+    return int(match.group(1)) if match else None
 
+# Sort pickle files by target reward
+pickle_files.sort(key=extract_target_reward)
+
+# Load and merge data from all pickle files
+for file in pickle_files:
+    data = load_pickle(file)
+    target_reward = extract_target_reward(file)
+    column_name = f'Target_{target_reward}'
+    df = pd.DataFrame(data, columns=[column_name])
+    df.index = result.index  # Assuming the dates align with the existing result dataframe
+    result = pd.merge(result, df, left_index=True, right_index=True)
+
+# Create column names list
 col_name = []
-col_name.append('A2C') if if_using_a2c else None
-col_name.append('dt_target_150000')
+if if_using_a2c: col_name.append('A2C')
+col_name.extend([f'Target_{extract_target_reward(file)}' for file in pickle_files])
 result.columns = col_name
 
-plt.rcParams["figure.figsize"] = (15,5)
-plt.figure()
-result.plot()
-plt.savefig('backtest_result.png')  # Save the plot as an image file
+# Plotting
+plt.figure(figsize=(15, 8))
+for column in result.columns:
+    if column.startswith('Target_'):
+        plt.plot(result.index, result[column], label=column)
+    elif column == 'A2C':
+        plt.plot(result.index, result[column], label=column, linestyle='--', linewidth=2)
+
+plt.title("Backtest Results with Multiple Target Rewards")
+plt.xlabel("Date")
+plt.ylabel("Total Asset Value")
+plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
+plt.tight_layout()
+plt.grid(True, linestyle='--', alpha=0.7)
+plt.savefig('backtest_result_multiple_targets.png', dpi=300, bbox_inches='tight')
 plt.close()
 
-# Optionally, you can save the updated result dataframe
-result.to_csv('updated_backtest_result.csv')
+# Save the updated result dataframe
+result.to_csv('updated_backtest_result_multiple_targets.csv')
+
+print(f"Processed {len(pickle_files)} pickle files.")
+print("Results saved as 'backtest_result_multiple_targets.png' and 'updated_backtest_result_multiple_targets.csv'")

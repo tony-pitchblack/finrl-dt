@@ -450,6 +450,8 @@ if __name__ == "__main__":
     parser.add_argument("--adapt_embed", action="store_true", default=False)
     parser.add_argument("--adapt_wte", action="store_true", default=False)
     parser.add_argument("--adapt_wpe", action="store_true", default=False)    
+    parser.add_argument("--random_weights_pretrained_lm", action="store_true", default=False)
+
     args = parser.parse_args()
     print("args: ", vars(args))
     experiment(variant=vars(args))
