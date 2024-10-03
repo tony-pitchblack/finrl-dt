@@ -328,8 +328,10 @@ def experiment(
             }
 
         return fn
-    
+
+    print("model_type: ", model_type)    
     if model_type == "dt":
+        print("training decision transformer")
         model = DecisionTransformer(
             args=variant,
             state_dim=state_dim,
@@ -407,6 +409,7 @@ def experiment(
             print("fintune all.")
             
     elif model_type == "bc":
+        print("training behavior cloning")
         model = MLPBCModel(
             state_dim=state_dim,
             act_dim=act_dim,

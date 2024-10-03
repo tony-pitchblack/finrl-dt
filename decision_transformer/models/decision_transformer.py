@@ -42,6 +42,8 @@ class DecisionTransformer(TrajectoryModel):
     ):
         super().__init__(state_dim, act_dim, max_length=max_length)
 
+        print('args["pretrained_lm"]: ', args["pretrained_lm"])
+
         self.hidden_size = hidden_size
         
         if args["pretrained_lm"] is not None:

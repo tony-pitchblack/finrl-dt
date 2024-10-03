@@ -54,7 +54,7 @@ if_using_a2c = True
 # if_using_td3 = True
 # if_using_sac = True
 
-agent = DRLAgent(env = env_train)
+agent = DRLAgent(env = env_train, n_envs=10)
 model_a2c = agent.get_model("a2c")
 
 if if_using_a2c:
