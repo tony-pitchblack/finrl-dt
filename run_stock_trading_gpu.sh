@@ -3,6 +3,8 @@
 export TRANSFORMERS_OFFLINE=0
 export TOKENIZERS_PARALLELISM=0
 
+exp_name=a2c_gpt2
+
 # Model parameters
 model_type=dt
 lr=1e-4
@@ -63,4 +65,5 @@ CUDA_VISIBLE_DEVICES=${gpu} python experiment.py \
     --mlp_embedding \
     --adapt_mode \
     --adapt_embed \
-    --lora
+    --lora \
+    --exp_name ${exp_name}

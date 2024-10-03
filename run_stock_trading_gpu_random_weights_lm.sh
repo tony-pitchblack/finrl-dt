@@ -3,6 +3,8 @@
 export TRANSFORMERS_OFFLINE=0
 export TOKENIZERS_PARALLELISM=0
 
+exp_name=a2c_random_weights
+
 # Model parameters
 model_type=dt
 lr=1e-4
@@ -64,4 +66,6 @@ CUDA_VISIBLE_DEVICES=${gpu} python experiment.py \
     --adapt_mode \
     --adapt_embed \
     --lora \
-    --random_weights_pretrained_lm
+    --random_weights_pretrained_lm \
+    --exp_name ${exp_name}
+

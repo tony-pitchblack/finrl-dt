@@ -87,6 +87,7 @@ def evaluate_episode_rtg(
     target_return=None,
     target_reward_raw=None,
     mode="normal",
+    variant=None,
     # record_video=False,
     # video_path=None
 ):

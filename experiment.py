@@ -240,7 +240,8 @@ def experiment(
                             mode=mode,
                             state_mean=state_mean,
                             state_std=state_std,
-                            device=device
+                            device=device,
+                            variant=variant
                         )
                     else:
                         ret, length = evaluate_episode(
@@ -396,7 +397,7 @@ def experiment(
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     # basic settings
-    parser.add_argument("--env", type=str, default="hopper")
+    parser.add_argument("--env", type=str, default="Stock trading")
     parser.add_argument(
         "--dataset", type=str, default="medium"
     )  # medium, medium-replay, medium-expert, expert
@@ -451,6 +452,7 @@ if __name__ == "__main__":
     parser.add_argument("--adapt_wte", action="store_true", default=False)
     parser.add_argument("--adapt_wpe", action="store_true", default=False)    
     parser.add_argument("--random_weights_pretrained_lm", action="store_true", default=False)
+    parser.add_argument("--exp_name", type=str, required=True, help="Name of the experiment")
 
     args = parser.parse_args()
     print("args: ", vars(args))
