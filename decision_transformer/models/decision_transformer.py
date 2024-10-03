@@ -83,7 +83,28 @@ class DecisionTransformer(TrajectoryModel):
 
         if args['random_weights_pretrained_lm']:      # Randomly initialize the weights
             print("Randomly initializing the weights of the pretrained model...")
+            
+            # Check weights before initialization
+            before_weights = {}
+            for name, param in self.transformer_model.named_parameters():
+                if 'weight' in name and 'lora' not in name.lower():
+                    before_weights[name] = param.data.clone()
+            
             self.transformer_model.init_weights() # then we will only train the LoRA adapter weights
+            
+            # Check weights after initialization
+            after_weights = {}
+            changed_weights = []
+            for name, param in self.transformer_model.named_parameters():
+                if 'weight' in name and 'lora' not in name.lower():
+                    after_weights[name] = param.data.clone()
+                    if not torch.allclose(before_weights[name], after_weights[name]):
+                        changed_weights.append(name)
+            
+            print(f"Number of changed weight tensors: {len(changed_weights)}")
+            print("Changed weight tensors:")
+            for name in changed_weights:
+                print(f"  - {name}")
 
         if max_ep_len > config.n_positions and args["extend_positions"]:
             current_max_pos, embed_size = self.transformer.wpe.weight.shape
