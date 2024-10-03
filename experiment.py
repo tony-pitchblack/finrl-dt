@@ -1,4 +1,3 @@
-import gym
 import numpy as np
 import torch
 import argparse
@@ -7,12 +6,9 @@ import random
 import os
 import loralib as lora
 from decision_transformer.evaluation.evaluate_episodes import (
-    evaluate_episode,
     evaluate_episode_rtg,
 )
 from decision_transformer.models.decision_transformer import DecisionTransformer
-from decision_transformer.models.mlp_bc import MLPBCModel
-from decision_transformer.training.act_trainer import ActTrainer
 from decision_transformer.training.seq_trainer import SequenceTrainer
 from utils import get_optimizer
 
@@ -62,7 +58,6 @@ def experiment(
     os.makedirs(variant["outdir"], exist_ok=True)
     device = variant.get("device", "cuda")
     env_name, dataset = variant["env"], variant["dataset"]
-    model_type = variant["model_type"]
     
     if env_name == "stock_trading":
         print("stock trading env.")
@@ -227,35 +222,22 @@ def experiment(
             os.makedirs(os.path.join(variant["outdir"], "videos", str(target_rew)), exist_ok=True)
             for _ in range(num_eval_episodes):
                 with torch.no_grad():
-                    if model_type == "dt":
-                        ret, length = evaluate_episode_rtg(
-                            env,
-                            state_dim,
-                            act_dim,
-                            model,
-                            max_ep_len=max_ep_len,
-                            scale=scale,
-                            target_return=target_rew / scale,
-                            target_reward_raw=target_rew,
-                            mode=mode,
-                            state_mean=state_mean,
-                            state_std=state_std,
-                            device=device,
-                            variant=variant
-                        )
-                    else:
-                        ret, length = evaluate_episode(
-                            env,
-                            state_dim,
-                            act_dim,
-                            model,
-                            max_ep_len=max_ep_len,
-                            target_return=target_rew / scale,
-                            mode=mode,
-                            state_mean=state_mean,
-                            state_std=state_std,
-                            device=device,
-                        )
+                    ret, length = evaluate_episode_rtg(
+                        env,
+                        state_dim,
+                        act_dim,
+                        model,
+                        max_ep_len=max_ep_len,
+                        scale=scale,
+                        target_return=target_rew / scale,
+                        target_reward_raw=target_rew,
+                        mode=mode,
+                        state_mean=state_mean,
+                        state_std=state_std,
+                        device=device,
+                        variant=variant
+                    )
+
                 returns.append(ret)
                 lengths.append(length)
 
