@@ -154,8 +154,8 @@ def evaluate_episode_rtg(
             print("[1st] total_asset_value_list[-1]: at t:", t, "is", total_asset_value_list[-1])
         else:
             print("reward:", reward)
-            print("adding reward to total_asset_value_list:rewad*env.reward_scaling", reward*env.reward_scaling)
-            total_asset_value_list.append(total_asset_value_list[-1] + reward * env.reward_scaling)
+            print("adding reward to total_asset_value_list:rewad*env.reward_scaling", reward*(1/env.reward_scaling))
+            total_asset_value_list.append(total_asset_value_list[-1] + reward * (1/env.reward_scaling))
             print("total_asset_value_list[-1]: at t:", t, "is", total_asset_value_list[-1])
         
         state, reward, done, _, _ = env.step(action)

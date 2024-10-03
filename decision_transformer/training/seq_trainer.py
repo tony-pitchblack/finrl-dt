@@ -27,6 +27,7 @@ class SequenceTrainer(Trainer):
             timesteps,
             attention_mask=attention_mask,
         )
+        
 
         self.step += 1
         print("train_step:self.step", self.step)
@@ -35,6 +36,10 @@ class SequenceTrainer(Trainer):
         action_target = action_target.reshape(-1, act_dim)[
             attention_mask.reshape(-1) > 0
         ]
+        print("train_step:action_preds", action_preds)
+        print("train_step:action_target", action_target)
+        print("train_step:action_preds.shape", action_preds.shape)
+        print("train_step:action_target.shape", action_target.shape)
        
         loss = self.loss_fn(
             None,
