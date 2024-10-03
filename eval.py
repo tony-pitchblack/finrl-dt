@@ -113,6 +113,10 @@ if __name__ == "__main__":
     parser.add_argument("--dropout", type=float, default=0.1)
     parser.add_argument("--mlp_embedding", action="store_true")
     parser.add_argument("--num_eval_episodes", type=int, default=10)
+    parser.add_argument("--model_type", type=str, default="dt")  # dt for decision transformer, bc for behavior cloning
+    parser.add_argument("--seed", type=int, default=666)
+    parser.add_argument("--sample_ratio", type=float, default=1.0)
+    parser.add_argument("--description", type=str, default="")
     
     args = parser.parse_args()
     evaluate(args)

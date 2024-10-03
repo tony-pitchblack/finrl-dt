@@ -5,8 +5,6 @@ env=stock_trading
 dataset=your_dataset_name
 sample_ratio=1
 K=20  # Context length
-state_dim=291
-act_dim=29
 dataset_path="./trajectories_a2c_100_2024-10-02_15-39-10.pkl"
 
 # Model parameters
@@ -50,7 +48,5 @@ CUDA_VISIBLE_DEVICES=${gpu} python eval.py \
     --adapt_mode \
     --adapt_embed \
     --lora \
-    --lora_path "${lora_path}" \
-    --num_eval_episodes ${num_eval_episodes} \
-    --state_dim ${state_dim} \
-    --act_dim ${act_dim}
+    --lora_path ${lora_path} \
+    --num_eval_episodes ${num_eval_episodes}
