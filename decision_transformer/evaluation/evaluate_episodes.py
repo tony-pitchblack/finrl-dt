@@ -187,11 +187,12 @@ def evaluate_episode_rtg(
         #     frames.append(frame_resized)
 
         if done:
+            print("variant[exp_name]:", variant['exp_name'])
             # current time
             from datetime import datetime
             current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
             import pickle
-            with open(f'total_asset_value_list_{target_reward_raw}_{current_time}.pkl', 'wb') as f:
+            with open(f'total_asset_value_list_{target_reward_raw}_{current_time}_{variant["exp_name"]}.pkl', 'wb') as f:
                 pickle.dump(total_asset_value_list, f)
 
             break
