@@ -45,8 +45,9 @@ def collect_single_trajectory(env_kwargs):
 
     while not done:
         # Use the trained A2C model to select actions
-        action, _ = model_a2c.predict(state, deterministic=True)
-
+        # action, _ = model_a2c.predict(state, deterministic=True)
+        action, _ = model_a2c.predict(state, deterministic=False)
+        
         next_state, reward, done, truncated, info = env.step(action)
 
         observations.append(state)
