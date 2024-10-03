@@ -12,7 +12,7 @@ dropout=0.1
 warmup_steps=2500
 num_steps_per_iter=755
 max_iters=40
-num_eval_episodes=1
+# num_eval_episodes=1
 
 # Environment parameters
 env=stock_trading

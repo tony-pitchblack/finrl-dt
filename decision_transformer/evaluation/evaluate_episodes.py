@@ -86,8 +86,8 @@ def evaluate_episode_rtg(
     device="cuda",
     target_return=None,
     mode="normal",
-    record_video=False,
-    video_path=None
+    # record_video=False,
+    # video_path=None
 ):
     print("state_dim @ evaluate_episode_rtg:", state_dim)
 
@@ -151,10 +151,10 @@ def evaluate_episode_rtg(
         # Initialize or update total asset value list
         if 'total_asset_value_list' not in locals():
             total_asset_value_list = [env.initial_amount]
-            print("total_asset_value_list[-1]: at t:", t, "is", total_asset_value_list[-1])
+            # print("total_asset_value_list[-1]: at t:", t, "is", total_asset_value_list[-1])
         else:
             total_asset_value_list.append(total_asset_value_list[-1] + reward * env.reward_scaling)
-            print("total_asset_value_list[-1]: at t:", t, "is", total_asset_value_list[-1])
+            # print("total_asset_value_list[-1]: at t:", t, "is", total_asset_value_list[-1])
         
         state, reward, done, _, _ = env.step(action)
 
