@@ -6,7 +6,6 @@ export TOKENIZERS_PARALLELISM=0
 exp_name=a2c_random_weights
 
 # Model parameters
-model_type=dt
 lr=1e-4
 lmlr=1e-5
 weight_decay=1e-5
@@ -47,7 +46,6 @@ CUDA_VISIBLE_DEVICES=${gpu} python experiment.py \
     --env ${env} \
     --dataset ${dataset} \
     --dataset_path ${dataset_path} \
-    --model_type ${model_type} \
     --seed ${seed} \
     --K ${K} \
     --learning_rate ${lr} \

@@ -409,7 +409,6 @@ if __name__ == "__main__":
     parser.add_argument("--K", type=int, default=100)
     parser.add_argument("--pct_traj", type=float, default=1.0)
     parser.add_argument("--batch_size", type=int, default=64)
-    parser.add_argument("--model_type", type=str, default="dt")  # dt for decision transformer, bc for behavior cloning
     # data sampling
     parser.add_argument("--sample_ratio", type=float, default=1.0)
     parser.add_argument("--data_suffix", type=str, default="d1")
