@@ -103,6 +103,9 @@ def evaluate(variant):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
+    parser.add_argument("--adapt_mode", action="store_true", default=False)
+    parser.add_argument("--adapt_embed", action="store_true", default=False)
+    parser.add_argument("--lora", action="store_true", default=False) 
     parser.add_argument("--lora_path", type=str, required=True, help="Path to the saved LoRA parameters")
     parser.add_argument("--pretrained_lm", type=str, required=True, help="Name or path of the pretrained language model")
     parser.add_argument("--device", type=str, default="cuda")
