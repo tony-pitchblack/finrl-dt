@@ -186,7 +186,7 @@ def evaluate_episode_rtg(
 
         if done:
             import pickle
-            with open('total_asset_value_list.pkl', 'wb') as f:
+            with open(f'total_asset_value_list_{target_return}.pkl', 'wb') as f:
                 pickle.dump(total_asset_value_list, f)
 
             break
