@@ -492,6 +492,12 @@ if __name__ == "__main__":
     # to load the dataset
     parser.add_argument("--dataset_path", type=str, required=True, help="Path to the trajectories.pkl file")
 
+
+    parser.add_argument(
+        "--mode", type=str, default="normal"
+    )  # normal for standard setting, delayed for sparse
+
+
     parser.add_argument(
         "--mode", type=str, default="normal"
     )  # normal for standard setting, delayed for sparse

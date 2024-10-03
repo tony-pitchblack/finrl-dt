@@ -119,6 +119,30 @@ if __name__ == "__main__":
     parser.add_argument("--seed", type=int, default=666)
     parser.add_argument("--sample_ratio", type=float, default=1.0)
     parser.add_argument("--description", type=str, default="")
-    
+
+    parser.add_argument("--pct_traj", type=float, default=1.0)
+    parser.add_argument("--batch_size", type=int, default=64)
+    parser.add_argument("--model_type", type=str, default="dt")  # dt for decision transformer, bc for behavior cloning
+
+    # architecture, don't need to care about in our method
+    parser.add_argument("--embed_dim", type=int, default=128)
+    parser.add_argument("--n_layer", type=int, default=3)
+    parser.add_argument("--n_head", type=int, default=1)
+    parser.add_argument("--activation_function", type=str, default="relu")
+    parser.add_argument("--extend_positions", action="store_true", default=False)
+    parser.add_argument("--share_input_output_proj", action="store_true", default=False)
+
+    # adaptations
+    parser.add_argument("--adapt_mode", action="store_true", default=False)
+    parser.add_argument("--lora", action="store_true", default=False)
+    parser.add_argument("--only_adapt_last_two_blocks", action="store_true", default=False)
+    parser.add_argument("--adapt_last_two_blocks", action="store_true", default=False)
+    parser.add_argument("--adapt_ln", action="store_true", default=False)
+    parser.add_argument("--adapt_attn", action="store_true", default=False)
+    parser.add_argument("--adapt_ff", action="store_true", default=False)
+    parser.add_argument("--adapt_embed", action="store_true", default=False)
+    parser.add_argument("--adapt_wte", action="store_true", default=False)
+    parser.add_argument("--adapt_wpe", action="store_true", default=False)    
+
     args = parser.parse_args()
     evaluate(variant=vars(args))
