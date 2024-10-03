@@ -44,6 +44,7 @@ CUDA_VISIBLE_DEVICES=${gpu} python experiment.py \
     --device ${device} \
     --env ${env} \
     --dataset ${dataset} \
+    --dataset_path ${dataset_path} \
     --model_type ${model_type} \
     --seed ${seed} \
     --K ${K} \
