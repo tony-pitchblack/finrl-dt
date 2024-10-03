@@ -83,13 +83,15 @@ def load_pickle(file_path):
 # Get all relevant pickle files in the current directory
 pickle_files = [f for f in os.listdir('.') if f.startswith('total_asset_value_list_') and f.endswith('.pkl')]
 
-# Function to extract target reward from filename
+# Function to extract target reward and experiment name from filename
 def extract_target_reward(filename):
-    match = re.search(r'_(\d+)_', filename)
-    return int(match.group(1)) if match else None
+    match = re.search(r'_(\d+)_.*_(.+)$', filename)
+    if match:
+        return int(match.group(1)), match.group(2)
+    return None, None
 
 # Sort pickle files by target reward
-pickle_files.sort(key=extract_target_reward)
+pickle_files.sort(key=lambda x: extract_target_reward(x)[0])
 
 # Load and merge data from all pickle files
 for file in pickle_files:

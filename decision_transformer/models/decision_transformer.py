@@ -4,6 +4,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 import transformers
+from transformers.pytorch_utils import Conv1D
 
 import sys
 import os
@@ -81,7 +82,7 @@ class DecisionTransformer(TrajectoryModel):
             hidden_size = config.n_embd
             self.hidden_size = config.n_embd
 
-        if args['random_weights_pretrained_lm']:      # Randomly initialize the weights
+        if args['random_weights_pretrained_lm']:  # Randomly initialize the weights
             print("Randomly initializing the weights of the pretrained model...")
             
             # Check weights before initialization
@@ -89,8 +90,22 @@ class DecisionTransformer(TrajectoryModel):
             for name, param in self.transformer_model.named_parameters():
                 if 'weight' in name and 'lora' not in name.lower():
                     before_weights[name] = param.data.clone()
-            
-            self.transformer_model.init_weights() # then we will only train the LoRA adapter weights
+                    
+            # Custom weight initialization
+            def init_weights(module):
+                if isinstance(module, (nn.Linear, nn.Embedding)):
+                    module.weight.data.normal_(mean=0.0, std=0.02)
+                    if isinstance(module, nn.Linear) and module.bias is not None:
+                        module.bias.data.zero_()
+                elif isinstance(module, nn.LayerNorm):
+                    module.bias.data.zero_()
+                    module.weight.data.fill_(1.0)
+                elif isinstance(module, Conv1D):
+                    module.weight.data.normal_(mean=0.0, std=0.02)
+                    module.bias.data.zero_()
+                # You may also need to handle other custom layers or modules here.
+
+            self.transformer_model.apply(init_weights)
             
             # Check weights after initialization
             after_weights = {}
