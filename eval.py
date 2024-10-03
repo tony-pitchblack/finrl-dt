@@ -33,7 +33,7 @@ env_kwargs = {
     "reward_scaling": 1e-4
 }
 
-def evaluate(args):
+def evaluate(variant):
     # Set up environment
     env = StockTradingEnv(df=trade, turbulence_threshold=70, risk_indicator_col='vix', **env_kwargs)
     state_dim = env.observation_space.shape[0]
@@ -42,15 +42,15 @@ def evaluate(args):
     scale = 1e6
 
     # Load pretrained model config
-    config = GPT2Config.from_pretrained(args.pretrained_lm)
-    config.resid_pdrop = args.dropout
+    config = GPT2Config.from_pretrained(variant["pretrained_lm"])
+    config.resid_pdrop = variant["dropout"]
 
     # Initialize model with pretrained weights
     model = DecisionTransformer(
-        args=args,
+        args=variant,
         state_dim=state_dim,
         act_dim=act_dim,
-        max_length=args.K,
+        max_length=variant["K"],
         max_ep_len=max_ep_len,
         hidden_size=config.n_embd,
         n_layer=config.n_layer,
@@ -60,24 +60,24 @@ def evaluate(args):
         n_positions=config.n_positions,
         resid_pdrop=config.resid_pdrop,
         attn_pdrop=config.attn_pdrop,
-        mlp_embedding=args.mlp_embedding
+        mlp_embedding=variant["mlp_embedding"]
     )
     
     # Load pretrained weights
-    model.transformer_model.load_state_dict(torch.load(args.pretrained_lm))
+    model.transformer_model.load_state_dict(torch.load(variant["pretrained_lm"]))
 
     # Load LoRA parameters
-    lora_state_dict = torch.load(args.lora_path)
+    lora_state_dict = torch.load(variant["lora_path"])
     model.load_state_dict(lora_state_dict, strict=False)
 
-    model.to(args.device)
+    model.to(variant["device"])
     model.eval()
 
     # Evaluate for different target rewards
     target_rewards = [1_500_000]
     for target_rew in target_rewards:
         returns = []
-        for _ in range(args.num_eval_episodes):
+        for _ in range(variant["num_eval_episodes"]):
             with torch.no_grad():
                 ret, _ = evaluate_episode_rtg(
                     env,
@@ -90,7 +90,7 @@ def evaluate(args):
                     mode="normal",
                     state_mean=None,
                     state_std=None,
-                    device=args.device,
+                    device=variant["device"],
                 )
             returns.append(ret)
         
@@ -118,4 +118,4 @@ if __name__ == "__main__":
     parser.add_argument("--description", type=str, default="")
     
     args = parser.parse_args()
-    evaluate(args)
+    evaluate(variant=vars(args))

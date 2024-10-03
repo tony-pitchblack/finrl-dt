@@ -45,8 +45,5 @@ CUDA_VISIBLE_DEVICES=${gpu} python eval.py \
     --dropout ${dropout} \
     --description ${description} \
     --mlp_embedding \
-    --adapt_mode \
-    --adapt_embed \
-    --lora \
     --lora_path ${lora_path} \
     --num_eval_episodes ${num_eval_episodes}
