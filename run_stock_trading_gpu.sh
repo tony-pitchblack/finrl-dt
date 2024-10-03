@@ -27,7 +27,8 @@ dataset_path="./stock_trading_trajectories.pkl"
 device='gpu'
 
 # Pretrained language model
-pretrained_lm="gpt2"
+# pretrained_lm="gpt2"
+pretrained_lm="/state/partition1/user/syun/gpt2_model"
 
 # Positional arguments from command line
 description=${1}
