@@ -324,7 +324,7 @@ def experiment(
                 f"target_{target_rew}_return_std": np.std(returns),
                 f"target_{target_rew}_length_mean": np.mean(lengths),
                 f"target_{target_rew}_length_std": np.std(lengths),
-                f"target_{target_rew}_noromalized_return_mean": env.get_normalized_score(np.mean(returns)),
+                # f"target_{target_rew}_noromalized_return_mean": env.get_normalized_score(np.mean(returns)),
                 f"target_{target_rew}_videos": []
             }
 
