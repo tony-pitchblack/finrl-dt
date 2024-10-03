@@ -56,7 +56,8 @@ def discount_cumsum(x, gamma):
 
 def experiment(
     variant,
-):
+):  
+    print("variant@def_experiment: ", variant)
     torch.manual_seed(variant["seed"])
     os.makedirs(variant["outdir"], exist_ok=True)
     device = variant.get("device", "cuda")
@@ -540,4 +541,5 @@ if __name__ == "__main__":
     parser.add_argument("--adapt_wte", action="store_true", default=False)
     parser.add_argument("--adapt_wpe", action="store_true", default=False)    
     args = parser.parse_args()
+    print("args: ", vars(args))
     experiment(variant=vars(args))
