@@ -434,6 +434,7 @@ if __name__ == "__main__":
     parser.add_argument("--adapt_wpe", action="store_true", default=False)    
     parser.add_argument("--random_weights_pretrained_lm", action="store_true", default=False)
     parser.add_argument("--exp_name", type=str, required=True, help="Name of the experiment")
+    parser.add_argument("--drl_algo", type=str, required=True, help="Name of the DRL algorithm")
 
     args = parser.parse_args()
     print("args: ", vars(args))

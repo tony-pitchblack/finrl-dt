@@ -5,6 +5,8 @@ export TOKENIZERS_PARALLELISM=0
 
 exp_name=a2c_gpt2
 
+drl_algo="ddpg"
+
 # Model parameters
 lr=1e-4
 lmlr=1e-5
@@ -65,4 +67,5 @@ CUDA_VISIBLE_DEVICES=${gpu} python experiment.py \
     --adapt_mode \
     --adapt_embed \
     --lora \
-    --exp_name ${exp_name}
+    --exp_name ${exp_name} \
+    --drl_algo ${drl_algo}
