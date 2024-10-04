@@ -192,7 +192,7 @@ def evaluate_episode_rtg(
             from datetime import datetime
             current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
             import pickle
-            with open(f'total_asset_value_list_{target_reward_raw}_{current_time}_{variant["exp_name"]}.pkl', 'wb') as f:
+            with open(f'total_asset_value_list_{variant["drl_algo"]}_{target_reward_raw}_{current_time}_{variant["exp_name"]}.pkl', 'wb') as f:
                 pickle.dump(total_asset_value_list, f)
 
             break

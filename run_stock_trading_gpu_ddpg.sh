@@ -1,9 +1,12 @@
 #!/bin/bash
+# Activate the conda environment
+conda activate finrl-dt
+
 # run with: source run_stock_trading.sh "test_run" 123 0   
 export TRANSFORMERS_OFFLINE=0
 export TOKENIZERS_PARALLELISM=0
 
-exp_name=a2c_gpt2
+exp_name=ddpg_gpt2
 
 drl_algo="ddpg"
 
