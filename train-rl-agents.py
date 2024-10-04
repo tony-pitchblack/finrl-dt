@@ -87,29 +87,6 @@ if if_using_ddpg:
     
     trained_ddpg.save(TRAINED_MODEL_DIR + "/agent_ddpg") if if_using_ddpg else None
 
-if if_using_ppo:
-    print("training PPO agent")
-    agent = DRLAgent(env = env_train)
-    PPO_PARAMS = {
-        "n_steps": 2048,
-        "ent_coef": 0.01,
-        "learning_rate": 0.00025,
-        "batch_size": 128,
-    }
-    model_ppo = agent.get_model("ppo",model_kwargs = PPO_PARAMS)
-
-    # set up logger
-    tmp_path = RESULTS_DIR + '/ppo'
-    new_logger_ppo = configure(tmp_path, ["stdout", "csv", "tensorboard"])
-    # Set new logger
-    model_ppo.set_logger(new_logger_ppo)
-
-    trained_ppo = agent.train_model(model=model_ppo, 
-                             tb_log_name='ppo',
-                             total_timesteps=200000) if if_using_ppo else None
-    
-    trained_ppo.save(TRAINED_MODEL_DIR + "/agent_ppo") if if_using_ppo else None
-
 if if_using_td3:
     print("training TD3 agent")
     agent = DRLAgent(env = env_train)
@@ -154,3 +131,26 @@ if if_using_sac:
                              tb_log_name='sac',
                              total_timesteps=70000) if if_using_sac else None
     trained_sac.save(TRAINED_MODEL_DIR + "/agent_sac") if if_using_sac else None
+
+if if_using_ppo:
+    print("training PPO agent")
+    agent = DRLAgent(env = env_train)
+    PPO_PARAMS = {
+        "n_steps": 2048,
+        "ent_coef": 0.01,
+        "learning_rate": 0.00025,
+        "batch_size": 128,
+    }
+    model_ppo = agent.get_model("ppo",model_kwargs = PPO_PARAMS)
+
+    # set up logger
+    tmp_path = RESULTS_DIR + '/ppo'
+    new_logger_ppo = configure(tmp_path, ["stdout", "csv", "tensorboard"])
+    # Set new logger
+    model_ppo.set_logger(new_logger_ppo)
+
+    trained_ppo = agent.train_model(model=model_ppo, 
+                             tb_log_name='ppo',
+                             total_timesteps=200000) if if_using_ppo else None
+    
+    trained_ppo.save(TRAINED_MODEL_DIR + "/agent_ppo") if if_using_ppo else None
