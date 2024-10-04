@@ -84,20 +84,20 @@ def load_pickle(file_path):
 pickle_files = [f for f in os.listdir('.') if f.startswith('total_asset_value_list_') and f.endswith('.pkl')]
 
 # Function to extract target reward and experiment name from filename
-def extract_target_reward(filename):
-    match = re.search(r'_(\d+)_.*_(.+)$', filename)
+def extract_info(filename):
+    match = re.search(r'_(\d+)_(\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2})_(.+)\.pkl$', filename)
     if match:
-        return int(match.group(1)), match.group(2)
-    return None, None
+        return int(match.group(1)), match.group(2), match.group(3)
+    return None, None, None
 
 # Sort pickle files by target reward
-pickle_files.sort(key=lambda x: extract_target_reward(x)[0])
+pickle_files.sort(key=lambda x: extract_info(x)[0])
 
 # Load and merge data from all pickle files
 for file in pickle_files:
     data = load_pickle(file)
-    target_reward = extract_target_reward(file)
-    column_name = f'Target_{target_reward}'
+    target_reward, _, exp_name = extract_info(file)
+    column_name = f'Target_{target_reward}_{exp_name}'
     df = pd.DataFrame(data, columns=[column_name])
     df.index = result.index  # Assuming the dates align with the existing result dataframe
     result = pd.merge(result, df, left_index=True, right_index=True)
@@ -105,8 +105,11 @@ for file in pickle_files:
 # Create column names list
 col_name = []
 if if_using_a2c: col_name.append('A2C')
-col_name.extend([f'Target_{extract_target_reward(file)}' for file in pickle_files])
+col_name.extend([f'Target_{extract_info(file)[0]}_{extract_info(file)[2]}' for file in pickle_files])
 result.columns = col_name
+
+# Get the experiment name from the first pickle file (assuming all files have the same experiment name)
+_, _, exp_name = extract_info(pickle_files[0])
 
 # Plotting
 plt.figure(figsize=(15, 8))
@@ -116,17 +119,17 @@ for column in result.columns:
     elif column == 'A2C':
         plt.plot(result.index, result[column], label=column, linestyle='--', linewidth=2)
 
-plt.title("Backtest Results with Multiple Target Rewards")
+plt.title(f"Backtest Results with Multiple Target Rewards - {exp_name}")
 plt.xlabel("Date")
 plt.ylabel("Total Asset Value")
 plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
 plt.tight_layout()
 plt.grid(True, linestyle='--', alpha=0.7)
-plt.savefig('backtest_result_multiple_targets.png', dpi=300, bbox_inches='tight')
+plt.savefig(f'backtest_result_multiple_targets_{exp_name}.png', dpi=300, bbox_inches='tight')
 plt.close()
 
 # Save the updated result dataframe
-result.to_csv('updated_backtest_result_multiple_targets.csv')
+result.to_csv(f'updated_backtest_result_multiple_targets_{exp_name}.csv')
 
 print(f"Processed {len(pickle_files)} pickle files.")
-print("Results saved as 'backtest_result_multiple_targets.png' and 'updated_backtest_result_multiple_targets.csv'")
+print(f"Results saved as 'backtest_result_multiple_targets_{exp_name}.png' and 'updated_backtest_result_multiple_targets_{exp_name}.csv'")

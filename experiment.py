@@ -63,7 +63,7 @@ def experiment(
         print("stock trading env.")
         env = StockTradingEnv(df = trade, turbulence_threshold = 70, risk_indicator_col='vix', **env_kwargs)
         max_ep_len = 755
-        env_targets = [1_000_000, 1_250_000, 1_500_000, 1_750_000, 2_000_000, 2_250_000, 2_500_000, 2_750_000, 3_000_000, 3_250_000, 3_500_000, 3_750_000, 4_000_000, 4_250_000, 4_500_000, 4_750_000, 5_000_000] # fix this!
+        env_targets = [1_000_000, 1_250_000, 1_500_000, 1_750_000, 2_000_000, 2_250_000, 2_500_000] 
         # Set scale for reward
         scale = 1e6
     else:
