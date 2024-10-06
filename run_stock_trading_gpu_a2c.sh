@@ -23,7 +23,8 @@ K=20  # Context length
 state_dim=291
 act_dim=29
 # dataset_path="./stock_trading_trajectories.pkl"
-dataset_path="./trajectories_a2c_100_2024-10-03_13-56-14.pkl"
+#dataset_path="./trajectories_a2c_100_2024-10-03_13-56-14.pkl"
+dataset_path="./trajectories_a2c_1_2024-10-06_14-19-28.pkl"
 # Device
 device='cuda'
 
