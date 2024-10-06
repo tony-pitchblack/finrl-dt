@@ -22,32 +22,34 @@ sample_ratio=1
 K=20  # Context length
 state_dim=291
 act_dim=29
-dataset_path="stock_trading_trajectories.pkl"
+dataset_path="trajectories_a2c_100_2024-10-03_13-56-14.pkl"
 
 # Device
 device="cpu"
 
 # Pretrained language model
-# pretrained_lm="gpt2"
+pretrained_lm="gpt2"
 # pretrained_lm="/state/partition1/user/syun/gpt2_model"
-pretrained_lm="/home/gridsan/syun/gpt2_model"
+# pretrained_lm="/home/gridsan/syun/gpt2_model"
 
 # Positional arguments from command line
 description=${1}
 seed=${2}
 gpu=${3}
 
+exp_name="test run"
+drl_algo="a2c"
+
 # Construct description and output directory
 description="${pretrained_lm}_pretrained-ratio=${sample_ratio}_${description}"
 outdir="checkpoints/${env}_${dataset}_${description}_${seed}"
 
 # Run the experiment
-CUDA_VISIBLE_DEVICES=${gpu} python experiment.py \
+CUDA_VISIBLE_DEVICES=${gpu} ~/gits/FinRL-Tutorials/.conda/bin/python experiment.py \
     --device ${device} \
     --env ${env} \
     --dataset ${dataset} \
     --dataset_path ${dataset_path} \
-    --model_type ${model_type} \
     --seed ${seed} \
     --K ${K} \
     --learning_rate ${lr} \
@@ -65,4 +67,6 @@ CUDA_VISIBLE_DEVICES=${gpu} python experiment.py \
     --mlp_embedding \
     --adapt_mode \
     --adapt_embed \
-    --lora
+    --lora \
+    --exp_name ${exp_name} \
+    --drl_algo ${drl_algo}

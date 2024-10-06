@@ -56,17 +56,6 @@ class SequenceTrainer(Trainer):
         )
         print("loss:", loss)
 
-        # Generate natural language output from the LM with the given prompt
-        print("Generating text...")
-        prompt = "Why did you trade in that way?"
-        print("prompt:", prompt)
-        device = next(self.model.parameters()).device
-        inputs = self.tokenizer(prompt, return_tensors="pt").to(device)
-        outputs = self.model.transformer_model.generate(**inputs)
-        generated_text = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
-        print("Generated text:", generated_text)
-        # END
-
         self.optimizer.zero_grad()
         loss.backward()
         torch.nn.utils.clip_grad_norm_(self.model.parameters(), 0.25)
