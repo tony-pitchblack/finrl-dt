@@ -1,5 +1,7 @@
 #!/bin/bash
 # run with: source run_stock_trading.sh "test_run" 123 0   
+conda activate finrl-dt
+
 export TRANSFORMERS_OFFLINE=0
 export TOKENIZERS_PARALLELISM=0
 
@@ -11,7 +13,7 @@ lmlr=1e-5
 weight_decay=1e-5
 dropout=0.1
 warmup_steps=2500
-num_steps_per_iter=755
+num_steps_per_iter=75500
 max_iters=40
 num_eval_episodes=1
 
