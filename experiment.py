@@ -371,6 +371,7 @@ def experiment(
         outputs = trainer.train_iteration(
             num_steps=variant["num_steps_per_iter"], iter_num=iter + 1, print_logs=True
         )
+        print("outputs: ", outputs)
         print("HI2!")
         total_training_time += outputs["time/training"]
         outputs["time/total_training_time"] = total_training_time

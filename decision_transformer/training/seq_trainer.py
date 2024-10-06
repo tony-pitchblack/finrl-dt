@@ -3,8 +3,13 @@ import torch
 import torch.nn.functional as F
 
 from decision_transformer.training.trainer import Trainer
+from transformers import GPT2Tokenizer
 
 class SequenceTrainer(Trainer):
+    def __init__(self, *args, **kwargs):
+        super(SequenceTrainer, self).__init__(*args, **kwargs)
+        self.tokenizer = GPT2Tokenizer.from_pretrained('gpt2')  # Adjust the model name if needed
+    
     def train_step(self):
         (
             states,
@@ -50,7 +55,18 @@ class SequenceTrainer(Trainer):
             None,
         )
         print("loss:", loss)
-        
+
+        # Generate natural language output from the LM with the given prompt
+        print("Generating text...")
+        prompt = "Why did you trade in that way?"
+        print("prompt:", prompt)
+        device = next(self.model.parameters()).device
+        inputs = self.tokenizer(prompt, return_tensors="pt").to(device)
+        outputs = self.model.transformer_model.generate(**inputs)
+        generated_text = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
+        print("Generated text:", generated_text)
+        # END
+
         self.optimizer.zero_grad()
         loss.backward()
         torch.nn.utils.clip_grad_norm_(self.model.parameters(), 0.25)
