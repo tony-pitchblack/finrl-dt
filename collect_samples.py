@@ -10,22 +10,13 @@ import numpy as np
 import pandas as pd
 import pickle
 from tqdm import tqdm
-import multiprocessing
 from datetime import datetime
 from finrl.config import INDICATORS, TRAINED_MODEL_DIR
 
-def init_worker(model, train_data):
-    global model_global
-    global train_data_global
-    model_global = model
-    train_data_global = train_data
+random_seed = 20742
 
-def collect_single_trajectory(env_kwargs):
-    # Use the global model and data
-    model = model_global
-    train_data = train_data_global
-
-    # Initialize the environment within the process
+def collect_single_trajectory(env_kwargs, model, train_data):
+    # Initialize the environment
     from finrl.meta.env_stock_trading.env_stocktrading import StockTradingEnv
     env = StockTradingEnv(
         df=train_data,
@@ -44,7 +35,8 @@ def collect_single_trajectory(env_kwargs):
 
     while not done:
         # Use the trained A2C model to select actions
-        action, _ = model.predict(state, deterministic=False)
+        model.set_random_seed(random_seed)
+        action, _ = model.predict(state, deterministic=True)
         
         next_state, reward, done, truncated, info = env.step(action)
 
@@ -66,15 +58,15 @@ def collect_single_trajectory(env_kwargs):
 
 if __name__ == "__main__":
     # Load the training data once
-    train_data_file = 'train_data.csv'
+    train_or_test = 'test' # or 'train'
+    train_data_file = f'{train_or_test}_data.csv'
     train = pd.read_csv(train_data_file)
     train = train.set_index(train.columns[0])
     train.index.names = ['']
 
     # Load the model once
     from stable_baselines3 import A2C, DDPG
-    while model_choice not in ['a2c', 'ddpg']:
-        model_choice = input("Invalid choice. Please enter 'a2c' or 'ddpg': ").lower()
+    model_choice = 'a2c'    
     
     model_path = TRAINED_MODEL_DIR + f"/agent_{model_choice}"
     if model_choice == 'a2c':
@@ -102,30 +94,17 @@ if __name__ == "__main__":
     }
 
     # Number of trajectories to collect
-    total_episodes = 100  # Adjust this number as needed
+    total_episodes = 1  # Adjust this number as needed
 
-    # Detect the number of available CPU cores
-    num_cores = multiprocessing.cpu_count()
-    print(f"Detected {num_cores} CPU cores.")
-
-    # Limit the number of worker processes to avoid resource exhaustion
-    max_workers = num_cores  # Adjust 16 to a suitable number if needed
-    print(f"Using {max_workers} worker processes.")
-
-    # Prepare the environment arguments list
-    env_args_list = [env_kwargs for _ in range(total_episodes)]
-
-    # Use a persistent Pool and initialize with shared resources
-    with multiprocessing.Pool(processes=max_workers, initializer=init_worker, initargs=(model, train)) as pool:
-        trajectories = list(tqdm(
-            pool.imap_unordered(collect_single_trajectory, env_args_list),
-            total=total_episodes,
-            desc="Collecting Trajectories"
-        ))
+    # Collect trajectories sequentially
+    trajectories = []
+    for _ in tqdm(range(total_episodes), desc="Collecting Trajectories"):
+        trajectory = collect_single_trajectory(env_kwargs, model, train)
+        trajectories.append(trajectory)
 
     # Save the trajectories to a pickle file
     current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    output_filename = f'trajectories_{model_choice}_{total_episodes}_{current_time}.pkl'
+    output_filename = f'{train_or_test}_trajectories_{model_choice}_{total_episodes}_{current_time}.pkl'
     with open(output_filename, 'wb') as f:
         pickle.dump(trajectories, f)
 

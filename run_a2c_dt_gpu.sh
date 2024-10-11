@@ -23,7 +23,8 @@ env=stock_trading
 dataset=your_dataset_name
 sample_ratio=1
 K=20  # Context length - this is for the decision transformer model; Seeing the K number of states in the past to make a prediction on next action
-dataset_path="./trajectories_a2c_1_2024-10-06_14-19-28.pkl" # path to the trajectory data; It's a list of dict, where each dict contains keys like "observations", "actions", "rewards", and "terminals"
+dataset_path=train_trajectories_a2c_1_2024-10-11_16-03-20.pkl # path to the trajectory data; It's a list of dict, where each dict contains keys like "observations", "actions", "rewards", and "terminals"
+test_trajectory_file=test_trajectories_a2c_1_2024-10-11_16-04-31.pkl
 
 # Device
 device='cuda' # or 'cpu'
