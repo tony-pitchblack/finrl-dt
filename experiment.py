@@ -215,9 +215,7 @@ def experiment(
 
     def eval_episodes(target_rew, visualize):
         def fn(model):
-            returns, lengths, video_paths = [], [], []
-            os.makedirs(os.path.join(variant["outdir"], "videos", str(target_rew)), exist_ok=True)
-        
+            returns, lengths, video_paths = [], [], []        
             with torch.no_grad():
                 if variant["model_type"] == "dt":
                     ret, length = evaluate_episode_rtg(

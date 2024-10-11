@@ -2,7 +2,7 @@ import numpy as np
 import torch
 import tqdm
 import time
-
+import pickle
 class Trainer:
     def __init__(
         self,
@@ -30,9 +30,6 @@ class Trainer:
         self.eval_fns = [] if eval_fns is None else eval_fns
         self.diagnostics = dict()
         self.eval_only = eval_only
-        # self.eval_nlp_dataset = cycle(iter(eval_nlp_dataset))
-        # self.train_nlp_dataset = cycle(iter(train_nlp_dataset))
-
         self.start_time = time.time()
 
     def train_iteration(self, num_steps):
@@ -43,10 +40,11 @@ class Trainer:
 
         if not self.eval_only:
             self.model.train()
-            mean_loss = 0
+            loss_list = []
             progress_bar = tqdm.tqdm(range(num_steps), desc=f"Training")
             for _ in progress_bar:
                 train_loss = self.train_step()
+                loss_list.append(train_loss)
                 train_losses.append(train_loss)
                 if self.scheduler is not None:
                     self.scheduler.step()
@@ -75,11 +73,15 @@ class Trainer:
         for k in self.diagnostics:
             logs[k] = self.diagnostics[k]
 
-        if not self.eval_only:
-            torch.save(
-                self.model.state_dict(),
-                f"{self.args['outdir']}/model.pt",
-            )
+        # save the model
+        torch.save(
+            self.model.state_dict(),
+            f"{self.args['outdir']}/model.pt",
+        )
+        
+        # pickle the loss list
+        with open(f"{self.args['outdir']}/loss_list.pkl", "wb") as f:
+            pickle.dump(loss_list, f)
 
         return logs
 

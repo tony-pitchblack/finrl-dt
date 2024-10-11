@@ -169,7 +169,18 @@ def evaluate_episode_rtg(
             from datetime import datetime
             current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
             import pickle
-            with open(f'total_asset_value_list_{variant["drl_algo"]}_{target_reward_raw}_{current_time}_{variant["exp_name"]}.pkl', 'wb') as f:
+            import os
+
+            # Create the output directory if it doesn't exist
+            outdir = variant.get('outdir', 'output')  # Default to 'output' if not specified
+            os.makedirs(outdir, exist_ok=True)
+
+            # Construct the file path
+            file_name = f'total_asset_value_change_eval_{target_reward_raw}.pkl'
+            file_path = os.path.join(outdir, file_name)
+
+            # Save the pickle file
+            with open(file_path, 'wb') as f:
                 pickle.dump(total_asset_value_list, f)
 
             break
