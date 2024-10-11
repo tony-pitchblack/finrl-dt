@@ -10,6 +10,8 @@ class SequenceTrainer(Trainer):
         super(SequenceTrainer, self).__init__(*args, **kwargs)
         self.tokenizer = GPT2Tokenizer.from_pretrained('gpt2')  # Adjust the model name if needed
     
+# s, a, r, d, rtg, timesteps, mask
+
     def train_step(self):
         (
             states,
@@ -20,7 +22,6 @@ class SequenceTrainer(Trainer):
             timesteps,
             attention_mask,
         ) = self.get_batch(self.batch_size)
-        print("train_step:timesteps", timesteps)
         
         action_target = torch.clone(actions)
         
@@ -35,16 +36,11 @@ class SequenceTrainer(Trainer):
         
 
         self.step += 1
-        print("train_step:self.step", self.step)
         act_dim = action_preds.shape[2]
         action_preds = action_preds.reshape(-1, act_dim)[attention_mask.reshape(-1) > 0]
         action_target = action_target.reshape(-1, act_dim)[
             attention_mask.reshape(-1) > 0
         ]
-        print("train_step:action_preds", action_preds)
-        print("train_step:action_target", action_target)
-        print("train_step:action_preds.shape", action_preds.shape)
-        print("train_step:action_target.shape", action_target.shape)
        
         loss = self.loss_fn(
             None,

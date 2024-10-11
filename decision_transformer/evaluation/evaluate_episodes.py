@@ -15,11 +15,10 @@ def evaluate_episode(
     max_ep_len=1000,
     device="cuda",
     target_return=None,
-    mode="normal",
     state_mean=0.0,
     state_std=1.0,
 ):
-    print("target_return:", target_return)
+    # print("target_return:", target_return)
 
     model.eval()
     model.to(device=device)
@@ -32,7 +31,8 @@ def evaluate_episode(
     # we keep all the histories on the device
     # note that the latest action and reward will be "padding"
     states = (
-        torch.from_numpy(state)
+        # torch.from_numpy(state)
+        torch.tensor(state[0]) # don't know why but state is a tuple of list of numbs and {}.
         .reshape(1, state_dim)
         .to(device=device, dtype=torch.float32)
     )
@@ -57,11 +57,10 @@ def evaluate_episode(
         actions[-1] = action
         action = action.detach().cpu().numpy()
 
-        state, reward, done, _ = env.step(action)
+        state, reward, done, _, _ = env.step(action)
 
-        # cur_state = torch.from_numpy(state).to(device=device).reshape(1, state_dim)
-        cur_state = torch.from_numpy(state[0]).to(device=device).reshape(1, state_dim)
-
+        # cur_state = torch.from_numpy(np.ndarray(state)).to(device=device).reshape(1, np.ndarray(state_dim))
+        cur_state = torch.from_numpy(np.array(state)).to(device=device).reshape(1, state_dim)
         states = torch.cat([states, cur_state], dim=0)
         rewards[-1] = reward
 
@@ -86,10 +85,7 @@ def evaluate_episode_rtg(
     device="cuda",
     target_return=None,
     target_reward_raw=None,
-    mode="normal",
     variant=None,
-    # record_video=False,
-    # video_path=None
 ):
     print("state_dim @ evaluate_episode_rtg:", state_dim)
 
@@ -101,16 +97,6 @@ def evaluate_episode_rtg(
 
     state = env.reset()
     
-    # print("state after reset:", state[0])  
-    # print("state after reset dim:", np.ndarray(state[0]).shape)
-
-    frames = []
-
-    if mode == "noise":
-        state = state + np.random.normal(0, 0.1, size=state.shape)
-
-    # we keep all the histories on the device
-    # note that the latest action and reward will be "padding"
     states = (
         # torch.from_numpy(state)
         torch.tensor(state[0]) # don't know why but state is a tuple of list of numbs and {}.
@@ -132,6 +118,7 @@ def evaluate_episode_rtg(
     sim_states = []
 
     episode_return, episode_length = 0, 0
+
     for t in range(max_ep_len):
         print("t:", t, "for max_ep_len:", max_ep_len)
 
@@ -162,15 +149,11 @@ def evaluate_episode_rtg(
         
         state, reward, done, _, _ = env.step(action)
 
-        # cur_state = torch.from_numpy(np.ndarray(state)).to(device=device).reshape(1, np.ndarray(state_dim))
         cur_state = torch.from_numpy(np.array(state)).to(device=device).reshape(1, state_dim)
         states = torch.cat([states, cur_state], dim=0)
         rewards[-1] = reward
 
-        if mode != "delayed":
-            pred_return = target_return[0, -1] - (reward / scale)
-        else:
-            pred_return = target_return[0, -1]
+        pred_return = target_return[0, -1]
         target_return = torch.cat([target_return, pred_return.reshape(1, 1)], dim=1)
         timesteps = torch.cat(
             [timesteps, torch.ones((1, 1), device=device, dtype=torch.long) * (t + 1)],
@@ -180,12 +163,6 @@ def evaluate_episode_rtg(
         episode_return += reward
         episode_length += 1
         
-        # if record_video and t % 2 == 0:
-        #     curr_frame = env.render(mode='rgb_array')
-        #     print(curr_frame.shape)
-        #     frame_resized = cv2.resize(curr_frame, (84, 84)) 
-        #     frames.append(frame_resized)
-
         if done:
             print("variant[exp_name]:", variant['exp_name'])
             # current time
@@ -198,9 +175,5 @@ def evaluate_episode_rtg(
             break
 
     model.past_key_values = None
-
-    # if record_video:
-    #     clip = ImageSequenceClip(frames, fps=30)
-    #     clip.write_videofile(video_path, logger=None)
 
     return episode_return, episode_length

@@ -1,46 +1,49 @@
-import numpy as np
-import torch
 import argparse
+import loralib as lora
+import numpy as np
+import os
+import pandas as pd
 import pickle
 import random
-import os
-import loralib as lora
+import torch
+
+from decision_transformer.models.mlp_bc import MLPBCModel
 from decision_transformer.evaluation.evaluate_episodes import (
-    evaluate_episode_rtg,
+    evaluate_episode_rtg, # this is for decision transformer with reward to go (rtg) - like DT + LLM + LoRA setup
+    evaluate_episode # this is for simple MLP behavior cloning by Supervised Learning - no reward to go (rtg)
 )
 from decision_transformer.models.decision_transformer import DecisionTransformer
-from decision_transformer.training.seq_trainer import SequenceTrainer
+from decision_transformer.training.seq_trainer import SequenceTrainer # this is for decision transformer with reward to go (rtg) - like DT + LLM + LoRA setup
+from decision_transformer.training.act_trainer import ActTrainer # this is for simple MLP behavior cloning by Supervised Learning
 from utils import get_optimizer
 
-# to make eval env
+# to make stock trading enviornment - we use finrl library
 from finrl.meta.env_stock_trading.env_stocktrading import StockTradingEnv
-from finrl.config import INDICATORS, TRAINED_MODEL_DIR
-import pandas as pd
+from finrl.config import INDICATORS 
 
-# prep for training env. We need train.csv for such prep of environment.
+# prep for evaluation env. We need trade_data.csv for such prep of environment.
 trade = pd.read_csv('trade_data.csv')
-# Preprocessing
-trade = trade.set_index(trade.columns[0])
-trade.index.names = ['']
+trade = trade.set_index(trade.columns[0]) # this is to make sure that the index is not treated as a column
+trade.index.names = [''] # this is to make sure that the index is not treated as a column
 
-stock_dimension = len(trade.tic.unique())
-state_space = 1 + 2*stock_dimension + len(INDICATORS)*stock_dimension
+stock_dimension = len(trade.tic.unique()) # this is to get the number of unique stocks in the trade data
+state_space = 1 + 2*stock_dimension + len(INDICATORS)*stock_dimension # this is to get the state space; 1 is for initial account value, 2*stock_dimension is for the stock prices and holdings, len(INDICATORS)*stock_dimension is for the technical indicators
 print(f"Stock Dimension: {stock_dimension}, State Space: {state_space}")
 
-buy_cost_list = sell_cost_list = [0.001] * stock_dimension
-num_stock_shares = [0] * stock_dimension
+buy_cost_list = sell_cost_list = [0.001] * stock_dimension # this follows the FinRL neurips 2018 paper setup
+num_stock_shares = [0] * stock_dimension # this is to initialize the number of stock shares to 0 for all stocks
 
 env_kwargs = {
-    "hmax": 100,
-    "initial_amount": 1000000,
-    "num_stock_shares": num_stock_shares,
-    "buy_cost_pct": buy_cost_list,
-    "sell_cost_pct": sell_cost_list,
-    "state_space": state_space,
-    "stock_dim": stock_dimension,
-    "tech_indicator_list": INDICATORS,
-    "action_space": stock_dimension,
-    "reward_scaling": 1e-4
+    "hmax": 100, # holdings maximum - to limit the maximum number of shares that can be bought or sold at a time
+    "initial_amount": 1000000, # initial account value (cash holdings)
+    "num_stock_shares": num_stock_shares, # number of stock shares to hold
+    "buy_cost_pct": buy_cost_list, # buying cost percentage
+    "sell_cost_pct": sell_cost_list, # selling cost percentage
+    "state_space": state_space, # state space
+    "stock_dim": stock_dimension, # stock dimension
+    "tech_indicator_list": INDICATORS, # technical indicators
+    "action_space": stock_dimension, # action space
+    "reward_scaling": 1e-4 # reward scaling 
 }
 
 def discount_cumsum(x, gamma):
@@ -51,44 +54,39 @@ def discount_cumsum(x, gamma):
     return discount_cumsum
 
 def experiment(
-    variant,
+    variant, 
 ):  
-    print("variant@def_experiment: ", variant)
     torch.manual_seed(variant["seed"])
+    np.random.seed(variant["seed"])
+    random.seed(variant["seed"])
     os.makedirs(variant["outdir"], exist_ok=True)
     device = variant.get("device", "cuda")
-    env_name, dataset = variant["env"], variant["dataset"]
+    env_name = variant["env"]
     
     if env_name == "stock_trading":
-        print("stock trading env.")
         env = StockTradingEnv(df = trade, turbulence_threshold = 70, risk_indicator_col='vix', **env_kwargs)
-        max_ep_len = 755
-        env_targets = [1_000_000, 1_250_000, 1_500_000, 1_750_000, 2_000_000, 2_250_000, 2_500_000] 
-        # Set scale for reward
-        scale = 1e6
+        max_ep_len = 755 # 
+        env_targets = [1_500_000] # this is for evaluation of the trained DT because we need a RTG to make an inference 
+        scale = env_kwargs["reward_scaling"]
     else:
         raise NotImplementedError
+    
+    if variant["model_type"] == "bc": # this is for simple MLP behavior cloning by Supervised Learning - no reward to go (rtg)
+        env_targets = env_targets[
+            :1
+        ]  # since BC does not use rtg, no need for varying rtgs
 
     state_dim = env.observation_space.shape[0]
     act_dim = env.action_space.shape[0]
 
-    # load dataset
-    data_suffix = variant["data_suffix"]
-    ratio_str = "-" + str(variant["sample_ratio"]) + "-" + data_suffix if variant["sample_ratio"] < 1 else ""
-    if env_name in ["walker2d", "hopper", "halfcheetah", "reacher2d"]:
-        dataset_path = f"../data/mujoco/{env_name}-{dataset}{ratio_str}-v2.pkl"
-    elif env_name == "kitchen":
-        dataset_path = f"../data/kitchen/{env_name}-{dataset}{ratio_str}-v0.pkl"
-    elif env_name == "stock_trading":
-        dataset_path = variant["dataset_path"]
+    if env_name == "stock_trading":
+        dataset_path = variant["dataset_path"] # this is a pickled file containing trajectories of stock trading as a list of dictionaries with keys: observations, actions, rewards, and terminals.
     else: 
         raise NotImplementedError
-    # load train dataset - trajectories sampled from training env with some DRL policies
+    
     with open(dataset_path, "rb") as f:
         trajectories = pickle.load(f)
     
-    # save all path information into separate lists
-    mode = variant.get("mode", "normal")
     states, traj_lens, returns = [], [], []
     for path in trajectories:
         states.append(path["observations"])
@@ -104,7 +102,7 @@ def experiment(
     num_timesteps = sum(traj_lens)
 
     print("=" * 50)
-    print(f"Starting new experiment: {env_name} {dataset}")
+    print(f"Starting new experiment: {env_name}")
     print(f"{len(traj_lens)} trajectories, {num_timesteps} timesteps found")
     print(f"Average return: {np.mean(-returns):.2f}, std: {np.std(returns):.2f}")
     print(f"Max return: {np.max(-returns):.2f}, min: {np.min(-returns):.2f}")
@@ -112,7 +110,6 @@ def experiment(
 
     K = variant["K"]
     batch_size = variant["batch_size"]
-    num_eval_episodes = variant["num_eval_episodes"]
     pct_traj = variant.get("pct_traj", 1.0)
 
     # only train on top pct_traj trajectories (for %BC experiment)
@@ -220,8 +217,9 @@ def experiment(
         def fn(model):
             returns, lengths, video_paths = [], [], []
             os.makedirs(os.path.join(variant["outdir"], "videos", str(target_rew)), exist_ok=True)
-            for _ in range(num_eval_episodes):
-                with torch.no_grad():
+        
+            with torch.no_grad():
+                if variant["model_type"] == "dt":
                     ret, length = evaluate_episode_rtg(
                         env,
                         state_dim,
@@ -231,15 +229,26 @@ def experiment(
                         scale=scale,
                         target_return=target_rew / scale,
                         target_reward_raw=target_rew,
-                        mode=mode,
                         state_mean=state_mean,
                         state_std=state_std,
                         device=device,
                         variant=variant
                     )
+                elif variant["model_type"] == "bc":
+                    ret, length = evaluate_episode(
+                        env,
+                        state_dim,
+                        act_dim,
+                        model,
+                        max_ep_len=max_ep_len,
+                        target_return=target_rew / scale,
+                        state_mean=state_mean,
+                        state_std=state_std,
+                        device=device,
+                    )
 
-                returns.append(ret)
-                lengths.append(length)
+            returns.append(ret)
+            lengths.append(length)
 
             return {
                 f"target_{target_rew}_return_mean": np.mean(returns),
@@ -251,99 +260,142 @@ def experiment(
 
         return fn
 
-    print("Initializing decision transformer model with some adapters...")
-    model = DecisionTransformer(
-        args=variant,
-        state_dim=state_dim,
-        act_dim=act_dim,
-        max_length=K,
-        max_ep_len=max_ep_len,
-        hidden_size=variant["embed_dim"],
-        n_layer=variant["n_layer"],
-        n_head=variant["n_head"],
-        n_inner=4 * variant["embed_dim"],
-        activation_function=variant["activation_function"],
-        n_positions=1024,
-        resid_pdrop=variant["dropout"],
-        attn_pdrop=0.1,
-        mlp_embedding=variant["mlp_embedding"]
-    )
-    print("adapt mode: ", variant["adapt_mode"])
-    print("adapt lora: ", variant["lora"])
-    print("adapt embed: ", variant["adapt_embed"])
+    if variant["model_type"] == "dt":
+        print("Initializing decision transformer model with some adapters...")
+        model = DecisionTransformer(
+            args=variant,
+            state_dim=state_dim,
+            act_dim=act_dim,
+            max_length=K,
+            max_ep_len=max_ep_len,
+            hidden_size=variant["embed_dim"],
+            n_layer=variant["n_layer"],
+            n_head=variant["n_head"],
+            n_inner=4 * variant["embed_dim"],
+            activation_function=variant["activation_function"],
+            n_positions=1024,
+            resid_pdrop=variant["dropout"],
+            attn_pdrop=0.1,
+            mlp_embedding=variant["mlp_embedding"]
+        )
+        print("adapt mode: ", variant["adapt_mode"])
+        print("adapt lora: ", variant["lora"])
+        print("adapt embed: ", variant["adapt_embed"])
 
-    if variant["adapt_mode"]: # we adapt or pretrained llm with some specifications
-        if variant["lora"] == False:
-            for param in model.parameters():
-                param.requires_grad = False
-        else:
-            print("adapt lora.")
-            lora.mark_only_lora_as_trainable(model, bias='lora_only')
-        if variant["adapt_wte"]:
-            print("adapt wte.")
-            for param in model.transformer.wte.parameters():
-                param.requires_grad = True
-        if variant["adapt_wpe"]:
-            print("adapt wpe.")
-            for param in model.transformer.wpe.parameters():
-                param.requires_grad = True
-        if variant["adapt_embed"]:
-            print("adapt embeddings.")
-            # adapt the embeddings in DecisionTransformer
-            for name, param in model.named_parameters():
-                if ("embed" in name or "predict" in name):
-                    param.requires_grad = True
-        if variant["adapt_ln"]:
-            print("adapt layer norms.")
-            # adapt the LayerNorm in the transformer's blocks
-            for block in model.transformer.h:
-                for param in block.ln_1.parameters():
-                    param.requires_grad = True
-                for param in block.ln_2.parameters():
-                    param.requires_grad = True
-            # adapt the final LayerNorm in the transformer
-            for param in model.transformer.ln_f.parameters():
-                param.requires_grad = True
-        if variant["adapt_attn"]:
-            print("adapt attention.")
-            for block in model.transformer.h:
-            # adapt the attention weights and biases
-                for param in block.attn.parameters():
-                    param.requires_grad = True
-        if variant["adapt_ff"]:
-            print("adapt feed-forward.")
-            for block in model.transformer.h:
-                # adapt the feed_forward weights and biases
-                for param in block.mlp.parameters():
-                    param.requires_grad = True
-        if variant["only_adapt_last_two_blocks"]:
-            print("for transformer, only adapt the last two blocks.")
-            for block in model.transformer.h[0:-2]:
-                for param in block.parameters():
+        if variant["adapt_mode"]: # we adapt or pretrained llm with some specifications
+            print("adapt mode is true.. let's adapt our vanilla transformer model with some adapters.")
+            if variant["lora"] == False:
+                for param in model.parameters():
                     param.requires_grad = False
-        if variant["adapt_last_two_blocks"]:
-            print("for transformer, adapt the last two blocks.")
-            for block in model.transformer.h[-2:]:
-                for param in block.parameters():
+            else:
+                print("adding lora adapter.")
+                lora.mark_only_lora_as_trainable(model, bias='lora_only')
+                print("lora is added. and only lora is trainable.")
+
+            if variant["adapt_wte"]:
+                print("adapt wte.")
+                for param in model.transformer.wte.parameters():
                     param.requires_grad = True
-    else: 
-        print("fintune all.")
+
+            if variant["adapt_wpe"]:
+                print("adapt wpe.")
+                for param in model.transformer.wpe.parameters():
+                    param.requires_grad = True
+
+            if variant["adapt_embed"]:
+                print("adapt embeddings.")
+                # adapt the embeddings in DecisionTransformer
+                for name, param in model.named_parameters():
+                    if ("embed" in name or "predict" in name):
+                        param.requires_grad = True
+            if variant["adapt_ln"]:
+                print("adapt layer norms.")
+                # adapt the LayerNorm in the transformer's blocks
+                for block in model.transformer.h:
+                    for param in block.ln_1.parameters():
+                        param.requires_grad = True
+                    for param in block.ln_2.parameters():
+                        param.requires_grad = True
+                # adapt the final LayerNorm in the transformer
+                for param in model.transformer.ln_f.parameters():
+                    param.requires_grad = True
+            if variant["adapt_attn"]:
+                print("adapt attention.")
+                for block in model.transformer.h:
+                # adapt the attention weights and biases
+                    for param in block.attn.parameters():
+                        param.requires_grad = True
+            if variant["adapt_ff"]:
+                print("adapt feed-forward.")
+                for block in model.transformer.h:
+                    # adapt the feed_forward weights and biases
+                    for param in block.mlp.parameters():
+                        param.requires_grad = True
+            if variant["only_adapt_last_two_blocks"]:
+                print("for transformer, only adapt the last two blocks.")
+                for block in model.transformer.h[0:-2]:
+                    for param in block.parameters():
+                        param.requires_grad = False
+            if variant["adapt_last_two_blocks"]:
+                print("for transformer, adapt the last two blocks.")
+                for block in model.transformer.h[-2:]:
+                    for param in block.parameters():
+                        param.requires_grad = True
+        else: 
+            print("fintune all.")
+
+    elif variant["model_type"] == "bc":
+        print("Initializing behavior cloning model...")
+        print("state_dim: ", state_dim)
+        print("act_dim: ", act_dim)
+        print("K: ", K)
+        print("hidden_size: ", variant["embed_dim"])
+        print("n_layer: ", variant["n_layer"])
+        model = MLPBCModel(
+            state_dim=state_dim,
+            act_dim=act_dim,
+            max_length=K,
+            hidden_size=variant["embed_dim"],
+            n_layer=variant["n_layer"],
+        )
+
+    else:
+        raise NotImplementedError
 
     trainable_param_size = 0
     frozen_param_size = 0
 
     for name, param in model.named_parameters():
-        if "transformer" not in name: continue
-        if param.requires_grad:
-            trainable_param_size += param.numel()
-        else:
-            frozen_param_size += param.numel()
-    
+        if variant["model_type"] == "dt":
+            if "transformer" not in name: continue
+            if param.requires_grad:
+                trainable_param_size += param.numel()
+            else:
+                frozen_param_size += param.numel()
+        elif variant["model_type"] == "bc":
+            if param.requires_grad:
+                trainable_param_size += param.numel()
+            else:
+                frozen_param_size += param.numel()
+                
     print(f"Trainable parameters: {trainable_param_size}")
     print(f"Frozen parameters: {frozen_param_size}")
     print(f"Trainable ratio: {trainable_param_size/(trainable_param_size + frozen_param_size)}")
     
     model = model.to(device=device)
+
+    # # Generate natural language output from the LM with the given prompt
+    # print("Generating text...!!!")
+    # prompt = "Who's the president of the United States?"
+    # print("prompt:", prompt)
+    # device = next(model.parameters()).device
+    # from transformers import GPT2Tokenizer
+    # tokenizer = GPT2Tokenizer.from_pretrained('gpt2')
+    # inputs = tokenizer(prompt, return_tensors="pt").to(device)
+    # outputs = model.transformer_model.generate(**inputs)
+    # generated_text = tokenizer.decode(outputs[0], skip_special_tokens=True)
+    # print("Generated text..!!:", generated_text)
+    # # END
 
     warmup_steps = variant["warmup_steps"]
     optimizer = get_optimizer(args=variant, model=model)
@@ -354,41 +406,44 @@ def experiment(
     
     visualize = variant["visualize"]
 
-    trainer = SequenceTrainer(
-        args=variant,
-        model=model,
-        optimizer=optimizer,
-        batch_size=batch_size,
-        get_batch=get_batch,
-        scheduler=scheduler,
-        loss_fn=lambda s_hat, a_hat, r_hat, s, a, r: torch.mean((a_hat - a) ** 2),
-        eval_fns=[eval_episodes(tar, visualize) for tar in env_targets],
-    )
+    if variant["model_type"] == "dt":
+        trainer = SequenceTrainer(
+            args=variant,
+            model=model,
+            optimizer=optimizer,
+            batch_size=batch_size,
+            get_batch=get_batch,
+            scheduler=scheduler,
+            loss_fn=lambda s_hat, a_hat, r_hat, s, a, r: torch.mean((a_hat - a) ** 2),
+            eval_fns=[eval_episodes(tar, visualize) for tar in env_targets],
+        )
+    elif variant["model_type"] == "bc":
+        trainer = ActTrainer(
+            args=variant,
+            model=model,
+            optimizer=optimizer,
+            batch_size=batch_size,
+            get_batch=get_batch,
+            scheduler=scheduler,
+            loss_fn=lambda s_hat, a_hat, r_hat, s, a, r: torch.mean((a_hat - a) ** 2),
+            eval_fns=[eval_episodes(tar, visualize) for tar in env_targets],
+        )
 
     total_training_time = 0
-    for iter in range(variant["max_iters"]):
-        print("HI!")
-        outputs = trainer.train_iteration(
-            num_steps=variant["num_steps_per_iter"], iter_num=iter + 1, print_logs=True
-        )
-        print("outputs: ", outputs)
-        print("HI2!")
-        total_training_time += outputs["time/training"]
-        outputs["time/total_training_time"] = total_training_time
+    outputs = trainer.train_iteration(
+        num_steps=variant["num_steps"]
+    )
+    total_training_time += outputs["time/training"]
+    outputs["time/total_training_time"] = total_training_time
+    outputs["time/total_training_time"] = total_training_time
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     # basic settings
     parser.add_argument("--env", type=str, default="Stock trading")
-    parser.add_argument(
-        "--dataset", type=str, default="medium"
-    )  # medium, medium-replay, medium-expert, expert
     # to load the dataset
     parser.add_argument("--dataset_path", type=str, required=True, help="Path to the trajectories.pkl file")
-    parser.add_argument(
-        "--mode", type=str, default="normal"
-    )  # normal for standard setting, delayed for sparse
     parser.add_argument("--K", type=int, default=100)
     parser.add_argument("--pct_traj", type=float, default=1.0)
     parser.add_argument("--batch_size", type=int, default=64)
@@ -399,13 +454,12 @@ if __name__ == "__main__":
     parser.add_argument("--device", type=str, default="cuda")
     # parser.add_argument("--log_to_wandb", "-w", action="store_true", default=False)
     parser.add_argument("--visualize", "-v", action="store_true", default=False)
-    parser.add_argument("--seed", type=int, default=666)
+    parser.add_argument("--seed", type=int, default=11102)
     parser.add_argument("--outdir", type=str, default=None)
     parser.add_argument("--fp16", action="store_true", default=False)
-    parser.add_argument("--description", type=str, default="")
     # architecture, don't need to care about in our method
     parser.add_argument("--embed_dim", type=int, default=128)
-    parser.add_argument("--n_layer", type=int, default=3)
+    parser.add_argument("--n_layer", type=int, default=11) # this makes similar to decision transformer for comparison for behavior cloning
     parser.add_argument("--n_head", type=int, default=1)
     parser.add_argument("--activation_function", type=str, default="relu")
     parser.add_argument("--extend_positions", action="store_true", default=False)
@@ -413,12 +467,8 @@ if __name__ == "__main__":
     # learning hyperparameters
     parser.add_argument("--dropout", type=float, default=0.1)
     parser.add_argument("--learning_rate", "-lr", type=float, default=1e-4)
-    parser.add_argument("--lm_learning_rate", "-lmlr", type=float, default=None)
     parser.add_argument("--weight_decay", "-wd", type=float, default=1e-4)
     parser.add_argument("--warmup_steps", type=int, default=10000)
-    parser.add_argument("--num_eval_episodes", type=int, default=100)
-    parser.add_argument("--max_iters", type=int, default=40)
-    parser.add_argument("--num_steps_per_iter", type=int, default=2500)
     # implementations
     parser.add_argument("--pretrained_lm", type=str, default=None)
     parser.add_argument("--mlp_embedding", action="store_true", default=False)
@@ -436,6 +486,8 @@ if __name__ == "__main__":
     parser.add_argument("--random_weights_pretrained_lm", action="store_true", default=False)
     parser.add_argument("--exp_name", type=str, required=True, help="Name of the experiment")
     parser.add_argument("--drl_algo", type=str, required=True, help="Name of the DRL algorithm")
+    parser.add_argument("--model_type", type=str, default="dt")  # dt for decision transformer, bc for behavior cloning 
+    parser.add_argument("--num_steps", type=int, default=75500)
 
     args = parser.parse_args()
     print("args: ", vars(args))

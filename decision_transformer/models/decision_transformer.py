@@ -22,7 +22,6 @@ from decision_transformer.models.trajectory_gpt2_LoRA import GPT2Config_LoRA
 from decision_transformer.models.utils import ResidualBlock, MLPBlock
 
 class DecisionTransformer(TrajectoryModel):
-
     """
     This model uses GPT to model (Return_1, state_1, action_1, Return_2, state_2, ...)
     """
@@ -55,34 +54,10 @@ class DecisionTransformer(TrajectoryModel):
                     args["pretrained_lm"],
                     config=config
                 )
-            else:
-                config = transformers.GPT2Config.from_pretrained(args["pretrained_lm"])
-                config.resid_pdrop = args["dropout"]
-                self.transformer_model = GPT2LMHeadModel.from_pretrained(
-                    args["pretrained_lm"],
-                    config=config,
-                )
             hidden_size = config.n_embd
             self.hidden_size = config.n_embd
 
-        else:
-            if args['lora']:
-                config = GPT2Config_LoRA.from_pretrained("gpt2")
-                self.transformer_model = GPT2LMHeadModel_LoRA(config)
-            else:
-                config = transformers.GPT2Config(
-                    n_embd=hidden_size,
-                    **kwargs
-                )
-                # config = transformers.GPT2Config.from_pretrained("gpt2")
-                # config.resid_pdrop = args["dropout"]
-                # NOTE: If you comment two lines above, then we adopt non-pretrained 3-layer DT; otherwise we use the same config as the pretrained gpt2 model, but with random weights
-                self.transformer_model = GPT2LMHeadModel(config)
-            
-            hidden_size = config.n_embd
-            self.hidden_size = config.n_embd
-
-        if args['random_weights_pretrained_lm']:  # Randomly initialize the weights
+        if args['random_weights_pretrained_lm']:  # Randomly initialize the weights of the pretrained model for ablation study
             print("Randomly initializing the weights of the pretrained model...")
             
             # Check weights before initialization
@@ -112,7 +87,6 @@ class DecisionTransformer(TrajectoryModel):
             print("Changed weight tensors:")
             for name in changed_weights:
                 print(f"  - {name}")
-
 
         if max_ep_len > config.n_positions and args["extend_positions"]:
             current_max_pos, embed_size = self.transformer.wpe.weight.shape

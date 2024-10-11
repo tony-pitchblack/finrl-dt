@@ -27,9 +27,7 @@ def get_optimizer(args, model):
                             ]
                         )
                     ),
-                    "lr": args["lm_learning_rate"]
-                    if args["lm_learning_rate"] is not None
-                    else args["learning_rate"],
+                    "lr": args["learning_rate"],
                     "weight_decay": 0.0,
                 },
                 {

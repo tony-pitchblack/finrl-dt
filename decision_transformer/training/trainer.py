@@ -2,8 +2,6 @@ import numpy as np
 import torch
 import tqdm
 import time
-from itertools import cycle
-
 
 class Trainer:
     def __init__(
@@ -37,10 +35,8 @@ class Trainer:
 
         self.start_time = time.time()
 
-    def train_iteration(self, num_steps, iter_num=0, print_logs=False):
-
+    def train_iteration(self, num_steps):
         train_losses = []
-        # lm_losses = []
         logs = dict()
 
         train_start = time.time()
@@ -50,22 +46,17 @@ class Trainer:
             mean_loss = 0
             progress_bar = tqdm.tqdm(range(num_steps), desc=f"Training")
             for _ in progress_bar:
-                # train_loss, lm_loss = self.train_step()
                 train_loss = self.train_step()
                 train_losses.append(train_loss)
-                # lm_losses.append(lm_loss)
                 if self.scheduler is not None:
                     self.scheduler.step()
 
                 logs["time/training"] = time.time() - train_start
                 logs["training/train_loss_mean"] = np.mean(train_losses)
                 logs["training/train_loss_std"] = np.std(train_losses)
-                # logs["training/lm_loss_mean"] = np.mean(lm_losses)
-                # logs["training/lm_loss_std"] = np.std(lm_losses)
                 
                 progress_bar.set_postfix({"loss": logs["training/train_loss_mean"], "lr": self.optimizer.param_groups[0]['lr']})
                 
-
         eval_start = time.time()
 
         self.model.eval()
@@ -78,23 +69,17 @@ class Trainer:
 
         if not self.eval_only:
             logs["time/total"] = time.time() - self.start_time
+
         logs["time/evaluation"] = time.time() - eval_start
 
         for k in self.diagnostics:
             logs[k] = self.diagnostics[k]
 
-        if print_logs:
-            print("=" * 80)
-            print(f"Iteration {iter_num}")
-            for k, v in logs.items():
-                print(f"{k}: {v}")
-
         if not self.eval_only:
-            if self.args.get("outdir") and iter_num % 5 == 0:
-                torch.save(
-                    self.model.state_dict(),
-                    f"{self.args['outdir']}/model_{iter_num}.pt",
-                )
+            torch.save(
+                self.model.state_dict(),
+                f"{self.args['outdir']}/model.pt",
+            )
 
         return logs
 
