@@ -9,7 +9,6 @@ exp_name=a2c_gpt2
 
 # Model parameters
 lr=1e-4
-lmlr=1e-5
 weight_decay=1e-5
 dropout=0.1
 warmup_steps=2500
@@ -52,7 +51,6 @@ CUDA_VISIBLE_DEVICES=${gpu} python experiment.py \
     --seed ${seed} \
     --K ${K} \
     --learning_rate ${lr} \
-    --lm_learning_rate ${lmlr} \
     --num_steps_per_iter ${num_steps_per_iter} \
     --weight_decay ${weight_decay} \
     --max_iters ${max_iters} \
