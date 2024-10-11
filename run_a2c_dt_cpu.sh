@@ -6,7 +6,7 @@ export TRANSFORMERS_OFFLINE=0
 export TOKENIZERS_PARALLELISM=0
 
 seed=11102
-gpu=0 # gpu identification number
+gpu=-1 # gpu identification number
 
 drl_alg=a2c # the deep reinforcement learning algorithm of which we are targeting to clone the behavior
 model_type=dt
@@ -16,7 +16,7 @@ lr=1e-4
 weight_decay=1e-5 # for AdamW optimizer
 dropout=0.1
 warmup_steps=2500
-num_steps=30000 # total number of training steps; i.e., how many times we call env.step() for training
+num_steps=1 # total number of training steps; i.e., how many times we call env.step() for training
 
 # Environment parameters
 env=stock_trading
@@ -26,18 +26,19 @@ K=20  # Context length - this is for the decision transformer model; Seeing the 
 dataset_path="./trajectories_a2c_1_2024-10-06_14-19-28.pkl" # path to the trajectory data; It's a list of dict, where each dict contains keys like "observations", "actions", "rewards", and "terminals"
 
 # Device
-device='cuda' # or 'cuda'
+device='cpu' # or 'cuda'
 
 # Pretrained language model
-# pretrained_lm="gpt2" # this will trigger auto-downloading the gpt2 model from the Hugging Face model hub
-pretrained_lm="/home/gridsan/syun/gpt2_model" # or, we can simply use the path to the downloaded gpt2 model
+pretrained_lm="gpt2" # this will trigger auto-downloading the gpt2 model from the Hugging Face model hub
+# pretrained_lm="/home/gridsan/syun/gpt2_model" # or, we can simply use the path to the downloaded gpt2 model
+
 
 exp_name="${drl_alg}_${model_type}_dt_lora_${pretrained_lm}_${seed}"
 
 outdir="checkpoints/${exp_name}"
 
 # Run the experiment
-CUDA_VISIBLE_DEVICES=${gpu} python experiment.py \
+CUDA_VISIBLE_DEVICES=${gpu} ~/gits/FinRL-Tutorials/.conda/bin/python experiment.py \
     --device ${device} \
     --env ${env} \
     --dataset ${dataset} \

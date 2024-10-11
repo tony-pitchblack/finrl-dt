@@ -8,7 +8,7 @@ from transformers import GPT2Tokenizer
 class SequenceTrainer(Trainer):
     def __init__(self, *args, **kwargs):
         super(SequenceTrainer, self).__init__(*args, **kwargs)
-        self.tokenizer = GPT2Tokenizer.from_pretrained('gpt2')  # Adjust the model name if needed
+        self.tokenizer = GPT2Tokenizer.from_pretrained(args["pretrained_lm"])  # Adjust the model name if needed
     
 # s, a, r, d, rtg, timesteps, mask
 
