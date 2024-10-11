@@ -1,11 +1,5 @@
 import numpy as np
 import torch
-# import imageio
-import os
-import cv2
-# from moviepy.editor import ImageSequenceClip
-
-# finrl
 
 def evaluate_episode(
     env,
@@ -37,8 +31,6 @@ def evaluate_episode(
     actions = torch.zeros((0, act_dim), device=device, dtype=torch.float32)
     rewards = torch.zeros(0, device=device, dtype=torch.float32)
     target_return = torch.tensor(target_return, device=device, dtype=torch.float32)
-    sim_states = []
-
     episode_return, episode_length = 0, 0
     for t in range(max_ep_len):
 
@@ -85,11 +77,10 @@ def evaluate_episode_rtg(
     target_reward_raw=None,
     test_trajectory=None,
     variant=None,
+    train_or_test='test',
 ):
-
     expert_actions = test_trajectory[0]['actions']
 
-    model.eval()
     model.to(device=device)
 
     state_mean = torch.from_numpy(state_mean).to(device=device)
@@ -98,7 +89,6 @@ def evaluate_episode_rtg(
     state = env.reset()
     
     states = (
-        # torch.from_numpy(state)
         torch.tensor(state[0]) # don't know why but state is a tuple of list of numbs and {}.
         .reshape(1, state_dim)
         .to(device=device, dtype=torch.float32)
@@ -129,7 +119,7 @@ def evaluate_episode_rtg(
             target_return.to(dtype=torch.float32),
             timesteps.to(dtype=torch.long),
         )
-        actions[-1] = action
+        actions[-1] = action # update the last action in actions
         action = action.detach().cpu().numpy()
 
         expert_action = expert_actions[t]
@@ -164,7 +154,6 @@ def evaluate_episode_rtg(
         episode_length += 1
         
         if done:
-            print("variant[exp_name]:", variant['exp_name'])
             # current time
             from datetime import datetime
             current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
@@ -176,13 +165,13 @@ def evaluate_episode_rtg(
             os.makedirs(outdir, exist_ok=True)
 
             # Construct the file path
-            file_name = f'total_asset_value_change_eval_{target_reward_raw}.pkl'
+            file_name = f'total_asset_value_change_{train_or_test}_env_{target_reward_raw}.pkl'
             file_path = os.path.join(outdir, file_name)
 
             # Save the test_loss_list
-            test_loss_list_file_name = f'test_loss_list_{target_reward_raw}.pkl'
-            test_loss_list_file_path = os.path.join(outdir, test_loss_list_file_name)
-            with open(test_loss_list_file_path, 'wb') as f:
+            loss_list_file_name = f'{train_or_test}_loss_list_{target_reward_raw}.pkl'
+            loss_list_file_path = os.path.join(outdir, loss_list_file_name)
+            with open(loss_list_file_path, 'wb') as f:
                 pickle.dump(test_loss_list, f)
 
             # Save the pickle file

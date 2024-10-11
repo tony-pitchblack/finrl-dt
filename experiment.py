@@ -26,6 +26,11 @@ test_df = pd.read_csv('test_data.csv')
 test_df = test_df.set_index(test_df.columns[0]) # this is to make sure that the index is not treated as a column
 test_df.index.names = [''] # this is to make sure that the index is not treated as a column
 
+# prep for training env. We need trade_data.csv for such prep of environment
+train_df = pd.read_csv('train_data.csv')
+train_df = train_df.set_index(train_df.columns[0]) # this is to make sure that the index is not treated as a column
+train_df.index.names = [''] # this is to make sure that the index is not treated as a column
+
 stock_dimension = len(test_df.tic.unique()) # this is to get the number of unique stocks in the trade data
 state_space = 1 + 2*stock_dimension + len(INDICATORS)*stock_dimension # this is to get the state space; 1 is for initial account value, 2*stock_dimension is for the stock prices and holdings, len(INDICATORS)*stock_dimension is for the technical indicators
 print(f"Stock Dimension: {stock_dimension}, State Space: {state_space}")
@@ -64,12 +69,24 @@ def experiment(
     env_name = variant["env"]
     
     if env_name == "stock_trading":
+        # env for training
+        env_train = StockTradingEnv(df = train_df, turbulence_threshold = 70, risk_indicator_col='vix', **env_kwargs)           
+        train_trajectory_file = variant["dataset_path"]
+        with open(train_trajectory_file, "rb") as f:
+            train_trajectory = pickle.load(f)
+        env_targets_train = [train_trajectory[0]['rewards'].sum() / env_kwargs["reward_scaling"]] # this is the total return of the training trajectory
+        print("len of train_trajectory:", len(train_trajectory[0]['observations']))
+        print("env_targets_train:", env_targets_train)
+        max_ep_len_train = len(train_df)//stock_dimension
+        print("max_ep_len_train:", max_ep_len_train)
+
+        # env for testing
         env_test = StockTradingEnv(df = test_df, turbulence_threshold = 70, risk_indicator_col='vix', **env_kwargs)
         test_trajectory_file = variant["test_trajectory_file"]
         with open(test_trajectory_file, "rb") as f:
             test_trajectory = pickle.load(f)
         max_ep_len = len(test_df)//stock_dimension
-        env_targets = [1_500_000] # this is for evaluation of the trained DT because we need a RTG to make an inference 
+        env_targets_test = [1_500_000] # this is for evaluation of the trained DT because we need a RTG to make an inference 
         scale = env_kwargs["reward_scaling"]
     else:
         raise NotImplementedError
@@ -78,9 +95,16 @@ def experiment(
         env_targets = env_targets[
             :1
         ]  # since BC does not use rtg, no need for varying rtgs
+    
+    state_dim_train = env_train.observation_space.shape[0]
+    act_dim_train = env_train.action_space.shape[0]
+    print("act_dim_train:", act_dim_train)
+    print("state_dim_train:", state_dim_train)
 
     state_dim = env_test.observation_space.shape[0]
     act_dim = env_test.action_space.shape[0]
+    print("act_dim:", act_dim)
+    print("state_dim:", state_dim)
 
     if env_name == "stock_trading":
         dataset_path = variant["dataset_path"] # this is a pickled file containing trajectories of stock trading as a list of dictionaries with keys: observations, actions, rewards, and terminals.
@@ -216,7 +240,7 @@ def experiment(
 
         return s, a, r, d, rtg, timesteps, mask
 
-    def eval_episodes(target_rew):
+    def eval_episodes_test(target_raw):
         def fn(model):
             returns, lengths = [], []     
             with torch.no_grad():
@@ -228,14 +252,16 @@ def experiment(
                         model,
                         max_ep_len=max_ep_len,
                         scale=scale,
-                        target_return=target_rew / scale,
-                        target_reward_raw=target_rew,
+                        target_return=target_raw / scale,
+                        target_reward_raw=target_raw,
                         state_mean=state_mean,
                         state_std=state_std,
                         device=device,
                         variant=variant,
                         test_trajectory=test_trajectory,
+                        train_or_test='test',
                     )
+                    
                 elif variant["model_type"] == "bc":
                     ret, length = evaluate_episode(
                         env_test,
@@ -243,7 +269,7 @@ def experiment(
                         act_dim,
                         model,
                         max_ep_len=max_ep_len,
-                        target_return=target_rew / scale,
+                        target_return=target_raw / scale,
                         state_mean=state_mean,
                         state_std=state_std,
                         device=device,
@@ -253,11 +279,60 @@ def experiment(
             lengths.append(length)
 
             return {
-                f"target_{target_rew}_return_mean": np.mean(returns),
-                f"target_{target_rew}_return_std": np.std(returns),
-                f"target_{target_rew}_length_mean": np.mean(lengths),
-                f"target_{target_rew}_length_std": np.std(lengths),
-                f"target_{target_rew}_videos": []
+                f"target_{target_raw}_return_mean": np.mean(returns),
+                f"target_{target_raw}_return_std": np.std(returns),
+                f"target_{target_raw}_length_mean": np.mean(lengths),
+                f"target_{target_raw}_length_std": np.std(lengths),
+                f"target_{target_raw}_videos": []
+            }
+
+        return fn
+    
+    def eval_episodes_train(target_raw):
+        print("running eval_episodes_train...")
+        def fn(model):
+            returns, lengths = [], []     
+            with torch.no_grad():
+                if variant["model_type"] == "dt":
+                    ret, length = evaluate_episode_rtg(
+                        env_train,
+                        state_dim_train,
+                        act_dim_train,
+                        model,
+                        max_ep_len=max_ep_len_train,
+                        scale=scale,
+                        target_return=target_raw / scale,
+                        target_reward_raw=target_raw,
+                        state_mean=state_mean,
+                        state_std=state_std,
+                        device=device,
+                        variant=variant,
+                        test_trajectory=train_trajectory,
+                        train_or_test='train',
+                    )
+
+                elif variant["model_type"] == "bc":
+                    ret, length = evaluate_episode(
+                        env_test,
+                        state_dim,
+                        act_dim,
+                        model,
+                        max_ep_len=max_ep_len,
+                        target_return=target_raw / scale,
+                        state_mean=state_mean,
+                        state_std=state_std,
+                        device=device,
+                    )
+
+            returns.append(ret)
+            lengths.append(length)
+
+            return {
+                f"target_{target_raw}_return_mean": np.mean(returns),
+                f"target_{target_raw}_return_std": np.std(returns),
+                f"target_{target_raw}_length_mean": np.mean(lengths),
+                f"target_{target_raw}_length_std": np.std(lengths),
+                f"target_{target_raw}_videos": []
             }
 
         return fn
@@ -269,7 +344,7 @@ def experiment(
             state_dim=state_dim,
             act_dim=act_dim,
             max_length=K,
-            max_ep_len=max_ep_len,
+            max_ep_len=max_ep_len_train,
             hidden_size=variant["embed_dim"],
             n_layer=variant["n_layer"],
             n_head=variant["n_head"],
@@ -417,7 +492,7 @@ def experiment(
             get_batch=get_batch,
             scheduler=scheduler,
             loss_fn=lambda s_hat, a_hat, r_hat, s, a, r: torch.mean((a_hat - a) ** 2),
-            eval_fns=[eval_episodes(tar) for tar in env_targets],
+            eval_fns=[eval_episodes_train(tar) for tar in env_targets_train] + [eval_episodes_test(tar) for tar in env_targets_test],
         )
     elif variant["model_type"] == "bc":
         trainer = ActTrainer(
@@ -428,17 +503,12 @@ def experiment(
             get_batch=get_batch,
             scheduler=scheduler,
             loss_fn=lambda s_hat, a_hat, r_hat, s, a, r: torch.mean((a_hat - a) ** 2),
-            eval_fns=[eval_episodes(tar) for tar in env_targets],
+            eval_fns=[eval_episodes_test(tar) for tar in env_targets_test],
         )
 
-    total_training_time = 0
-    outputs = trainer.train_iteration(
+    trainer.train_iteration(
         num_steps=variant["num_steps"]
     )
-    total_training_time += outputs["time/training"]
-    outputs["time/total_training_time"] = total_training_time
-    outputs["time/total_training_time"] = total_training_time
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
