@@ -40,11 +40,11 @@ class Trainer:
 
         if not self.eval_only:
             self.model.train()
-            loss_list = []
+            train_loss_list = []
             progress_bar = tqdm.tqdm(range(num_steps), desc=f"Training")
             for _ in progress_bar:
                 train_loss = self.train_step()
-                loss_list.append(train_loss)
+                train_loss_list.append(train_loss)
                 train_losses.append(train_loss)
                 if self.scheduler is not None:
                     self.scheduler.step()
@@ -80,8 +80,8 @@ class Trainer:
         )
         
         # pickle the loss list
-        with open(f"{self.args['outdir']}/loss_list.pkl", "wb") as f:
-            pickle.dump(loss_list, f)
+        with open(f"{self.args['outdir']}/train_loss_list.pkl", "wb") as f:
+            pickle.dump(train_loss_list, f)
 
         return logs
 

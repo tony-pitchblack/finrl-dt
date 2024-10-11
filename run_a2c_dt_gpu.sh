@@ -12,11 +12,11 @@ drl_alg=a2c # the deep reinforcement learning algorithm of which we are targetin
 model_type=dt
 
 # Training parameters
-lr=1e-4
+lr=1e-3
 weight_decay=1e-5 # for AdamW optimizer
 dropout=0.1
 warmup_steps=2500
-num_steps=30000 # total number of training steps; i.e., how many times we call env.step() for training
+num_steps=1000 # total number of training steps; i.e., how many times we call env.step() for training
 
 # Environment parameters
 env=stock_trading
@@ -35,6 +35,8 @@ pretrained_lm="/home/gridsan/syun/gpt2_model" # or, we can simply use the path t
 exp_name="${drl_alg}_${model_type}_dt_lora_${pretrained_lm}_${seed}"
 
 outdir="checkpoints/${exp_name}"
+
+test_trajectory_file=test_trajectories_a2c_1_2024-10-11_13-14-50.pkl
 
 # Run the experiment
 CUDA_VISIBLE_DEVICES=${gpu} python experiment.py \
@@ -58,4 +60,5 @@ CUDA_VISIBLE_DEVICES=${gpu} python experiment.py \
     --lora \
     --exp_name ${exp_name} \
     --drl_alg ${drl_alg} \
-    --model_type ${model_type}
+    --model_type ${model_type} \
+    --test_trajectory_file ${test_trajectory_file}

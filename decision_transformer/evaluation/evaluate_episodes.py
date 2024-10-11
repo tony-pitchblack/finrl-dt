@@ -18,8 +18,6 @@ def evaluate_episode(
     state_mean=0.0,
     state_std=1.0,
 ):
-    # print("target_return:", target_return)
-
     model.eval()
     model.to(device=device)
 
@@ -85,9 +83,11 @@ def evaluate_episode_rtg(
     device="cuda",
     target_return=None,
     target_reward_raw=None,
+    test_trajectory=None,
     variant=None,
 ):
-    print("state_dim @ evaluate_episode_rtg:", state_dim)
+
+    expert_actions = test_trajectory[0]['actions']
 
     model.eval()
     model.to(device=device)
@@ -103,8 +103,6 @@ def evaluate_episode_rtg(
         .reshape(1, state_dim)
         .to(device=device, dtype=torch.float32)
     )
-    print("states:", states)
-    print("states.shape:", states.shape)
 
     actions = torch.zeros((0, act_dim), device=device, dtype=torch.float32)
     rewards = torch.zeros(0, device=device, dtype=torch.float32)
@@ -115,13 +113,11 @@ def evaluate_episode_rtg(
     )
     timesteps = torch.tensor(0, device=device, dtype=torch.long).reshape(1, 1)
 
-    sim_states = []
-
     episode_return, episode_length = 0, 0
 
-    for t in range(max_ep_len):
-        print("t:", t, "for max_ep_len:", max_ep_len)
+    test_loss_list = []
 
+    for t in range(max_ep_len):
         # add padding
         actions = torch.cat([actions, torch.zeros((1, act_dim), device=device)], dim=0)
         rewards = torch.cat([rewards, torch.zeros(1, device=device)])
@@ -135,6 +131,10 @@ def evaluate_episode_rtg(
         )
         actions[-1] = action
         action = action.detach().cpu().numpy()
+
+        expert_action = expert_actions[t]
+        test_loss = torch.mean((torch.from_numpy(expert_action) - torch.from_numpy(action)) ** 2)
+        test_loss_list.append(test_loss.item())
 
         print("env.initial_amount:", env.initial_amount)
         # Initialize or update total asset value list
@@ -178,6 +178,12 @@ def evaluate_episode_rtg(
             # Construct the file path
             file_name = f'total_asset_value_change_eval_{target_reward_raw}.pkl'
             file_path = os.path.join(outdir, file_name)
+
+            # Save the test_loss_list
+            test_loss_list_file_name = f'test_loss_list_{target_reward_raw}.pkl'
+            test_loss_list_file_path = os.path.join(outdir, test_loss_list_file_name)
+            with open(test_loss_list_file_path, 'wb') as f:
+                pickle.dump(test_loss_list, f)
 
             # Save the pickle file
             with open(file_path, 'wb') as f:

@@ -22,11 +22,11 @@ from finrl.meta.env_stock_trading.env_stocktrading import StockTradingEnv
 from finrl.config import INDICATORS 
 
 # prep for evaluation env. We need trade_data.csv for such prep of environment.
-trade = pd.read_csv('trade_data.csv')
-trade = trade.set_index(trade.columns[0]) # this is to make sure that the index is not treated as a column
-trade.index.names = [''] # this is to make sure that the index is not treated as a column
+test_df = pd.read_csv('test_data.csv')
+test_df = test_df.set_index(test_df.columns[0]) # this is to make sure that the index is not treated as a column
+test_df.index.names = [''] # this is to make sure that the index is not treated as a column
 
-stock_dimension = len(trade.tic.unique()) # this is to get the number of unique stocks in the trade data
+stock_dimension = len(test_df.tic.unique()) # this is to get the number of unique stocks in the trade data
 state_space = 1 + 2*stock_dimension + len(INDICATORS)*stock_dimension # this is to get the state space; 1 is for initial account value, 2*stock_dimension is for the stock prices and holdings, len(INDICATORS)*stock_dimension is for the technical indicators
 print(f"Stock Dimension: {stock_dimension}, State Space: {state_space}")
 
@@ -64,8 +64,11 @@ def experiment(
     env_name = variant["env"]
     
     if env_name == "stock_trading":
-        env = StockTradingEnv(df = trade, turbulence_threshold = 70, risk_indicator_col='vix', **env_kwargs)
-        max_ep_len = 755 # 
+        env_test = StockTradingEnv(df = test_df, turbulence_threshold = 70, risk_indicator_col='vix', **env_kwargs)
+        test_trajectory_file = variant["test_trajectory_file"]
+        with open(test_trajectory_file, "rb") as f:
+            test_trajectory = pickle.load(f)
+        max_ep_len = len(test_df)//stock_dimension
         env_targets = [1_500_000] # this is for evaluation of the trained DT because we need a RTG to make an inference 
         scale = env_kwargs["reward_scaling"]
     else:
@@ -76,8 +79,8 @@ def experiment(
             :1
         ]  # since BC does not use rtg, no need for varying rtgs
 
-    state_dim = env.observation_space.shape[0]
-    act_dim = env.action_space.shape[0]
+    state_dim = env_test.observation_space.shape[0]
+    act_dim = env_test.action_space.shape[0]
 
     if env_name == "stock_trading":
         dataset_path = variant["dataset_path"] # this is a pickled file containing trajectories of stock trading as a list of dictionaries with keys: observations, actions, rewards, and terminals.
@@ -213,13 +216,13 @@ def experiment(
 
         return s, a, r, d, rtg, timesteps, mask
 
-    def eval_episodes(target_rew, visualize):
+    def eval_episodes(target_rew):
         def fn(model):
-            returns, lengths, video_paths = [], [], []        
+            returns, lengths = [], []     
             with torch.no_grad():
                 if variant["model_type"] == "dt":
                     ret, length = evaluate_episode_rtg(
-                        env,
+                        env_test,
                         state_dim,
                         act_dim,
                         model,
@@ -230,11 +233,12 @@ def experiment(
                         state_mean=state_mean,
                         state_std=state_std,
                         device=device,
-                        variant=variant
+                        variant=variant,
+                        test_trajectory=test_trajectory,
                     )
                 elif variant["model_type"] == "bc":
                     ret, length = evaluate_episode(
-                        env,
+                        env_test,
                         state_dim,
                         act_dim,
                         model,
@@ -413,7 +417,7 @@ def experiment(
             get_batch=get_batch,
             scheduler=scheduler,
             loss_fn=lambda s_hat, a_hat, r_hat, s, a, r: torch.mean((a_hat - a) ** 2),
-            eval_fns=[eval_episodes(tar, visualize) for tar in env_targets],
+            eval_fns=[eval_episodes(tar) for tar in env_targets],
         )
     elif variant["model_type"] == "bc":
         trainer = ActTrainer(
@@ -424,7 +428,7 @@ def experiment(
             get_batch=get_batch,
             scheduler=scheduler,
             loss_fn=lambda s_hat, a_hat, r_hat, s, a, r: torch.mean((a_hat - a) ** 2),
-            eval_fns=[eval_episodes(tar, visualize) for tar in env_targets],
+            eval_fns=[eval_episodes(tar) for tar in env_targets],
         )
 
     total_training_time = 0
@@ -486,6 +490,7 @@ if __name__ == "__main__":
     parser.add_argument("--drl_algo", type=str, required=True, help="Name of the DRL algorithm")
     parser.add_argument("--model_type", type=str, default="dt")  # dt for decision transformer, bc for behavior cloning 
     parser.add_argument("--num_steps", type=int, default=75500)
+    parser.add_argument("--test_trajectory_file", type=str, default=None)
 
     args = parser.parse_args()
     print("args: ", vars(args))

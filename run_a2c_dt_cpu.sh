@@ -12,7 +12,7 @@ drl_alg=a2c # the deep reinforcement learning algorithm of which we are targetin
 model_type=dt
 
 # Training parameters
-lr=1e-4
+lr=1e-3
 weight_decay=1e-5 # for AdamW optimizer
 dropout=0.1
 warmup_steps=2500
@@ -31,12 +31,13 @@ device='cpu' # or 'cuda'
 # Pretrained language model
 pretrained_lm="gpt2" # this will trigger auto-downloading the gpt2 model from the Hugging Face model hub
 # pretrained_lm="/home/gridsan/syun/gpt2_model" # or, we can simply use the path to the downloaded gpt2 model
+lora=True
 
-
-exp_name="${drl_alg}_${model_type}_dt_lora_${pretrained_lm}_${seed}"
+exp_name="${drl_alg}_${model_type}_lora_${lora}_${pretrained_lm}_${seed}"
 
 outdir="checkpoints/${exp_name}"
 
+test_trajectory_file=test_trajectories_a2c_1_2024-10-11_13-14-50.pkl
 # Run the experiment
 CUDA_VISIBLE_DEVICES=${gpu} ~/gits/FinRL-Tutorials/.conda/bin/python experiment.py \
     --device ${device} \
@@ -59,4 +60,5 @@ CUDA_VISIBLE_DEVICES=${gpu} ~/gits/FinRL-Tutorials/.conda/bin/python experiment.
     --lora \
     --exp_name ${exp_name} \
     --drl_alg ${drl_alg} \
-    --model_type ${model_type}
+    --model_type ${model_type} \
+    --test_trajectory_file ${test_trajectory_file}
