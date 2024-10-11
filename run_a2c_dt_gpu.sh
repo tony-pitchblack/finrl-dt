@@ -5,7 +5,7 @@ conda activate finrl-dt
 export TRANSFORMERS_OFFLINE=0
 export TOKENIZERS_PARALLELISM=0
 
-seed=11102
+seeds=(20742 55230 85125 96921 67851)
 gpu=0 # gpu identification number
 
 drl_alg=a2c # the deep reinforcement learning algorithm of which we are targeting to clone the behavior
@@ -26,39 +26,41 @@ K=20  # Context length - this is for the decision transformer model; Seeing the 
 dataset_path="./trajectories_a2c_1_2024-10-06_14-19-28.pkl" # path to the trajectory data; It's a list of dict, where each dict contains keys like "observations", "actions", "rewards", and "terminals"
 
 # Device
-device='cuda' # or 'cuda'
+device='cuda' # or 'cpu'
 
 # Pretrained language model
 # pretrained_lm="gpt2" # this will trigger auto-downloading the gpt2 model from the Hugging Face model hub
 pretrained_lm="/home/gridsan/syun/gpt2_model" # or, we can simply use the path to the downloaded gpt2 model
 
-exp_name="${drl_alg}_${model_type}_dt_lora_${pretrained_lm}_${seed}"
+use_pretrained_lm=true
+lora=true
 
-outdir="checkpoints/${exp_name}"
+for seed in "${seeds[@]}"; do
+    exp_name="${drl_alg}_${model_type}_lora_gpt2_${seed}"
+    outdir="/home/gridsan/syun/finrl-dt/checkpoints/${exp_name}"
 
-test_trajectory_file=test_trajectories_a2c_1_2024-10-11_13-14-50.pkl
-
-# Run the experiment
-CUDA_VISIBLE_DEVICES=${gpu} python experiment.py \
-    --device ${device} \
-    --env ${env} \
-    --dataset ${dataset} \
-    --dataset_path ${dataset_path} \
-    --seed ${seed} \
-    --K ${K} \
-    --learning_rate ${lr} \
-    --num_steps ${num_steps} \
-    --weight_decay ${weight_decay} \
-    --sample_ratio ${sample_ratio} \
-    --warmup_steps ${warmup_steps} \
-    --pretrained_lm ${pretrained_lm} \
-    --outdir ${outdir} \
-    --dropout ${dropout} \
-    --mlp_embedding \
-    --adapt_mode \
-    --adapt_embed \
-    --lora \
-    --exp_name ${exp_name} \
-    --drl_alg ${drl_alg} \
-    --model_type ${model_type} \
-    --test_trajectory_file ${test_trajectory_file}
+    # Run the experiment
+    CUDA_VISIBLE_DEVICES=${gpu} python experiment.py \
+        --device ${device} \
+        --env ${env} \
+        --dataset ${dataset} \
+        --dataset_path ${dataset_path} \
+        --seed ${seed} \
+        --K ${K} \
+        --learning_rate ${lr} \
+        --num_steps ${num_steps} \
+        --weight_decay ${weight_decay} \
+        --sample_ratio ${sample_ratio} \
+        --warmup_steps ${warmup_steps} \
+        --pretrained_lm ${pretrained_lm} \
+        --outdir ${outdir} \
+        --dropout ${dropout} \
+        --mlp_embedding \
+        --adapt_mode \
+        --adapt_embed \
+        --lora \
+        --exp_name ${exp_name} \
+        --drl_alg ${drl_alg} \
+        --model_type ${model_type} \
+        --test_trajectory_file ${test_trajectory_file}
+done
