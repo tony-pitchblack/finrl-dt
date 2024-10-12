@@ -43,7 +43,6 @@ for seed in "${seeds[@]}"; do
     CUDA_VISIBLE_DEVICES=${gpu} python experiment.py \
         --device ${device} \
         --env ${env} \
-        --dataset ${dataset} \
         --dataset_path ${dataset_path} \
         --seed ${seed} \
         --K ${K} \
