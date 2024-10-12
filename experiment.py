@@ -74,11 +74,12 @@ def experiment(
         train_trajectory_file = variant["dataset_path"]
         with open(train_trajectory_file, "rb") as f:
             train_trajectory = pickle.load(f)
-        env_targets_train = [train_trajectory[0]['rewards'].sum() / env_kwargs["reward_scaling"]] # this is the total return of the training trajectory
-        print("len of train_trajectory:", len(train_trajectory[0]['observations']))
-        print("env_targets_train:", env_targets_train)
+
+        env_targets_train_reward = 0
+        for i in range(len(train_trajectory)):
+            env_targets_train_reward += train_trajectory[i]['rewards'].sum() / env_kwargs["reward_scaling"]
+        env_targets_train = [env_targets_train_reward]
         max_ep_len_train = len(train_df)//stock_dimension
-        print("max_ep_len_train:", max_ep_len_train)
 
         # env for testing
         env_test = StockTradingEnv(df = test_df, turbulence_threshold = 70, risk_indicator_col='vix', **env_kwargs)
