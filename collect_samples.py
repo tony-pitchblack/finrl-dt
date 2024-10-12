@@ -12,8 +12,9 @@ import pickle
 from tqdm import tqdm
 from datetime import datetime
 from finrl.config import INDICATORS, TRAINED_MODEL_DIR
+from stable_baselines3 import A2C, DDPG, TD3, PPO, SAC
 
-random_seed = 20742
+random_seed = 21102
 
 def collect_single_trajectory(env_kwargs, model, train_data):
     # Initialize the environment
@@ -57,55 +58,71 @@ def collect_single_trajectory(env_kwargs, model, train_data):
     return trajectory
 
 if __name__ == "__main__":
-    # Load the training data once
-    train_or_test = 'test' # or 'train'
-    train_data_file = f'{train_or_test}_data.csv'
-    train = pd.read_csv(train_data_file)
-    train = train.set_index(train.columns[0])
-    train.index.names = ['']
-
-    # Load the model once
-    from stable_baselines3 import A2C, DDPG
-    model_choice = 'a2c'    
-    
-    model_path = TRAINED_MODEL_DIR + f"/agent_{model_choice}"
-    if model_choice == 'a2c':
-        model = A2C.load(model_path)
-    elif model_choice == 'ddpg':
-        model = DDPG.load(model_path)
-
-    # Define environment parameters
-    stock_dimension = len(train.tic.unique())
-    state_space = 1 + 2 * stock_dimension + len(INDICATORS) * stock_dimension
-    buy_cost_list = sell_cost_list = [0.001] * stock_dimension
-    num_stock_shares = [0] * stock_dimension
-
-    env_kwargs = {
-        "hmax": 100,
-        "initial_amount": 1000000,
-        "num_stock_shares": num_stock_shares,
-        "buy_cost_pct": buy_cost_list,
-        "sell_cost_pct": sell_cost_list,
-        "state_space": state_space,
-        "stock_dim": stock_dimension,
-        "tech_indicator_list": INDICATORS,  # Define your technical indicators
-        "action_space": stock_dimension,
-        "reward_scaling": 1e-4
-    }
+    # Define the list of models and datasets
+    model_choices = ['a2c', 'ddpg', 'td3', 'ppo', 'sac']
+    dataset_choices = ['train', 'test']
 
     # Number of trajectories to collect
     total_episodes = 1  # Adjust this number as needed
 
-    # Collect trajectories sequentially
-    trajectories = []
-    for _ in tqdm(range(total_episodes), desc="Collecting Trajectories"):
-        trajectory = collect_single_trajectory(env_kwargs, model, train)
-        trajectories.append(trajectory)
+    # Ensure the 'data' directory exists
+    data_dir = 'data'
+    if not os.path.exists(data_dir):
+        os.makedirs(data_dir)
 
-    # Save the trajectories to a pickle file
-    current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    output_filename = f'{train_or_test}_trajectories_{model_choice}_{total_episodes}_{current_time}.pkl'
-    with open(output_filename, 'wb') as f:
-        pickle.dump(trajectories, f)
+    for train_or_test in dataset_choices:
+        # Load the dataset
+        data_file = f'{train_or_test}_data.csv'
+        data = pd.read_csv(data_file)
+        data = data.set_index(data.columns[0])
+        data.index.names = ['']
 
-    print(f"Collected {total_episodes} trajectories using {model_choice.upper()} model and saved to '{output_filename}'")
+        # Define environment parameters
+        stock_dimension = len(data.tic.unique())
+        state_space = 1 + 2 * stock_dimension + len(INDICATORS) * stock_dimension
+        buy_cost_list = sell_cost_list = [0.001] * stock_dimension
+        num_stock_shares = [0] * stock_dimension
+
+        env_kwargs = {
+            "hmax": 100,
+            "initial_amount": 1000000,
+            "num_stock_shares": num_stock_shares,
+            "buy_cost_pct": buy_cost_list,
+            "sell_cost_pct": sell_cost_list,
+            "state_space": state_space,
+            "stock_dim": stock_dimension,
+            "tech_indicator_list": INDICATORS,
+            "action_space": stock_dimension,
+            "reward_scaling": 1e-4
+        }
+
+        for model_choice in model_choices:
+            # Load the model
+            model_path = os.path.join(TRAINED_MODEL_DIR, f"agent_{model_choice}")
+            if model_choice == 'a2c':
+                model = A2C.load(model_path)
+            elif model_choice == 'ddpg':
+                model = DDPG.load(model_path)
+            elif model_choice == 'td3':
+                model = TD3.load(model_path)
+            elif model_choice == 'ppo':
+                model = PPO.load(model_path)
+            elif model_choice == 'sac':
+                model = SAC.load(model_path)
+            else:
+                raise ValueError(f"Unknown model choice: {model_choice}")
+
+            # Collect trajectories
+            trajectories = []
+            for _ in tqdm(range(total_episodes), desc=f"Collecting Trajectories for {model_choice.upper()} on {train_or_test} data"):
+                trajectory = collect_single_trajectory(env_kwargs, model, data)
+                trajectories.append(trajectory)
+
+            # Save the trajectories to a pickle file
+            current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+            output_filename = f'{train_or_test}_trajectories_{model_choice}_{total_episodes}_{current_time}.pkl'
+            output_path = os.path.join(data_dir, output_filename)
+            with open(output_path, 'wb') as f:
+                pickle.dump(trajectories, f)
+
+            print(f"Collected {total_episodes} trajectories using {model_choice.upper()} model on {train_or_test} data and saved to '{output_path}'")

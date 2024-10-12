@@ -86,7 +86,7 @@ def experiment(
         with open(test_trajectory_file, "rb") as f:
             test_trajectory = pickle.load(f)
         max_ep_len = len(test_df)//stock_dimension
-        env_targets_test = [1_500_000] # this is for evaluation of the trained DT because we need a RTG to make an inference 
+        env_targets_test = [2_000_000] # this is for evaluation of the trained DT because we need a RTG to make an inference 
         scale = env_kwargs["reward_scaling"]
     else:
         raise NotImplementedError
