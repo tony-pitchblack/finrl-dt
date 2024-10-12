@@ -4,6 +4,12 @@
 #SBATCH -o run_ensemble_dt_gpu.log-%j  # Output file
 #SBATCH -J run_ensemble_dt_gpu_job # Job name
 
+# Dynamically find the path to conda.sh based on the conda executable
+CONDA_PATH=$(dirname "$(dirname "$(which conda)")")/etc/profile.d/conda.sh
+
+# Source the conda.sh script
+source "$CONDA_PATH"
+
 # Initialize conda for use in the script
 eval "$(conda shell.bash hook)"
 
