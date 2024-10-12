@@ -40,7 +40,7 @@ for seed in "${seeds[@]}"; do
     outdir="/home/gridsan/syun/finrl-dt/checkpoints/${exp_name}"
 
     # Run the experiment
-    CUDA_VISIBLE_DEVICES=${gpu} python experiment.py \
+    CUDA_VISIBLE_DEVICES=${gpu} python ~/finrl-dt/experiment.py \
         --device ${device} \
         --env ${env} \
         --dataset_path ${dataset_path} \
