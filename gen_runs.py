@@ -122,6 +122,12 @@ submit_script_template = '''#!/bin/bash
 #SBATCH -o run_{algo}_dt_gpu.log-%j  # Output file
 #SBATCH -J run_{algo}_dt_gpu_job # Job name
 
+# Dynamically find the path to conda.sh based on the conda executable
+CONDA_PATH=$(dirname "$(dirname "$(which conda)")")/etc/profile.d/conda.sh
+
+# Source the conda.sh script
+source "$CONDA_PATH"
+
 # Initialize conda for use in the script
 eval "$(conda shell.bash hook)"
 
@@ -151,7 +157,7 @@ combined_submit_script = '''#!/bin/bash
 '''
 
 for algo in algorithms:
-    combined_submit_script += f"sbatch submit_run_{algo}_dt_gpu.sh\n"
+    combined_submit_script += f"sbatch runs/submit_run_{algo}_dt_gpu.sh\n"
 
 combined_submit_script_path = os.path.join('runs', 'submit_all_runs.sh')
 with open(combined_submit_script_path, 'w') as f:
