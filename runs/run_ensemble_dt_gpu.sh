@@ -1,5 +1,5 @@
 #!/bin/bash
-# Auto-generated run script for SAC
+# Auto-generated run script for ENSEMBLE
 
 conda activate finrl-dt
 
@@ -9,7 +9,7 @@ export TOKENIZERS_PARALLELISM=0
 seeds=(20742 55230 85125 96921 67851)
 gpu=0 # GPU identification number
 
-drl_alg=sac # The deep reinforcement learning algorithm we are targeting to clone the behavior
+drl_alg=ensemble # The deep reinforcement learning algorithm we are targeting to clone the behavior
 model_type=dt
 
 # Training parameters
@@ -23,8 +23,8 @@ num_steps=1000 # Total number of training steps; i.e., how many times we call en
 env=stock_trading
 sample_ratio=1
 K=20  # Context length for the decision transformer model
-dataset_path=data/train_sac_trajectory_2024-10-12_14-04-28.pkl # Path to the trajectory data
-test_trajectory_file=data/test_sac_trajectory_2024-10-12_14-04-31.pkl
+dataset_path=data/train_ensemble_trajectories_5_2024-10-12_14-04-28.pkl # Path to the trajectory data
+test_trajectory_file=data/test_ensemble_trajectories_5_2024-10-12_14-04-31.pkl
 
 # Device
 device='cuda' # or 'cpu'

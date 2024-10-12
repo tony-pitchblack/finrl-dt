@@ -11,4 +11,4 @@ eval "$(conda shell.bash hook)"
 conda activate finrl-dt
 
 # Run your main script
-bash run_td3_dt_gpu.sh
+bash runs/run_td3_dt_gpu.sh

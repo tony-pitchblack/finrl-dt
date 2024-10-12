@@ -1,8 +1,8 @@
 #!/bin/bash
 #SBATCH -c 20                # Request 20 CPU cores
 #SBATCH --gres=gpu:volta:1   # Request 1 Volta GPU
-#SBATCH -o run_a2c_dt_gpu.log-%j  # Output file
-#SBATCH -J run_a2c_dt_gpu_job # Job name
+#SBATCH -o run_ensemble_dt_gpu.log-%j  # Output file
+#SBATCH -J run_ensemble_dt_gpu_job # Job name
 
 # Initialize conda for use in the script
 eval "$(conda shell.bash hook)"
@@ -11,4 +11,4 @@ eval "$(conda shell.bash hook)"
 conda activate finrl-dt
 
 # Run your main script
-bash runs/run_a2c_dt_gpu.sh
+bash runs/run_ensemble_dt_gpu.sh

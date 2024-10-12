@@ -6,7 +6,7 @@ if not os.path.exists('runs'):
     os.makedirs('runs')
 
 # Define the list of algorithms
-algorithms = ['a2c', 'ddpg', 'td3', 'ppo', 'sac']
+algorithms = ['a2c', 'ddpg', 'td3', 'ppo', 'sac', 'ensemble']
 
 # Base script template
 base_script = '''#!/bin/bash
@@ -51,7 +51,7 @@ for seed in "${{seeds[@]}}"; do
     outdir="/home/gridsan/syun/finrl-dt/checkpoints/${{exp_name}}"
 
     # Run the experiment
-    CUDA_VISIBLE_DEVICES=${{gpu}} python experiment.py \\
+    CUDA_VISIBLE_DEVICES=${{gpu}} python ~/finrl-dt/experiment.py \\
         --device ${{device}} \\
         --env ${{env}} \\
         --dataset_path ${{dataset_path}} \\
@@ -78,7 +78,10 @@ done
 
 # Function to find the latest trajectory file for a given algorithm and dataset type
 def find_latest_trajectory_file(algo, dataset_type):
-    search_pattern = f'data/{dataset_type}_trajectories_{algo}_*.pkl'
+    if algo == 'ensemble':
+        search_pattern = f'data/{dataset_type}_{algo}_trajectories_*_*.pkl'
+    else:
+        search_pattern = f'data/{dataset_type}_{algo}_trajectory_*.pkl'
     files = glob.glob(search_pattern)
     if not files:
         raise FileNotFoundError(f"No {dataset_type} trajectory files found for algorithm '{algo}'.")
@@ -126,7 +129,7 @@ eval "$(conda shell.bash hook)"
 conda activate finrl-dt
 
 # Run your main script
-bash run_{algo}_dt_gpu.sh
+bash runs/run_{algo}_dt_gpu.sh
 '''
 
 # Generate individual submit scripts

@@ -23,8 +23,8 @@ num_steps=1000 # Total number of training steps; i.e., how many times we call en
 env=stock_trading
 sample_ratio=1
 K=20  # Context length for the decision transformer model
-dataset_path=data/train_trajectories_a2c_1_2024-10-12_12-02-47.pkl # Path to the trajectory data
-test_trajectory_file=data/test_trajectories_a2c_1_2024-10-12_12-03-55.pkl
+dataset_path=data/train_a2c_trajectory_2024-10-12_14-03-14.pkl # Path to the trajectory data
+test_trajectory_file=data/test_a2c_trajectory_2024-10-12_14-04-29.pkl
 
 # Device
 device='cuda' # or 'cpu'
