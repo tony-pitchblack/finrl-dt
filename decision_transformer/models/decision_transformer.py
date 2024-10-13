@@ -122,7 +122,7 @@ class DecisionTransformer(TrajectoryModel):
         self.embed_ln = nn.LayerNorm(hidden_size)
 
         # note: we don't predict states or returns for the paper
-        if args["mlp_embedding"]:
+        if args["mlp_embedding"]: # we run this
           if args["share_input_output_proj"]: raise ValueError("With MLP in embeddings, you cannot share the projections")
           self.predict_state = torch.nn.Linear(hidden_size, self.state_dim)
           self.predict_action = MLPBlock(self.hidden_size, self.act_dim, self.hidden_size)
@@ -146,6 +146,41 @@ class DecisionTransformer(TrajectoryModel):
         
         self.past_key_values = None
         print(self)
+
+    def generate_explanation(self, hidden_states, attention_mask):
+        # Use the last hidden state to generate an explanation
+        last_hidden_state = hidden_states[:, -1, :]
+        
+        # You might need to add a linear layer to project to the vocab size
+        # if not already present in the model
+        if not hasattr(self, 'lm_head'):
+            self.lm_head = nn.Linear(self.hidden_size, self.transformer_model.config.vocab_size, bias=False)
+        
+        logits = self.lm_head(last_hidden_state)
+        
+        # Convert logits to input_ids for generation
+        input_ids = logits.argmax(dim=-1).unsqueeze(1)
+        
+        # Generate text using input_ids instead of inputs_embeds
+        generated_ids = self.transformer_model.generate(
+            input_ids=input_ids,
+            max_length=50,  # Adjust as needed
+            num_return_sequences=1,
+            no_repeat_ngram_size=2,
+            do_sample=True,
+            top_k=50,
+            top_p=0.95,
+            pad_token_id=self.transformer_model.config.pad_token_id,  # Ensure pad_token_id is set
+            attention_mask=attention_mask, # Ensure attention_mask is set
+        )
+        
+        # Decode the generated ids to text
+        tokenizer = GPT2Tokenizer.from_pretrained('gpt2')
+        tokenizer.pad_token = tokenizer.eos_token # Set pad_token to eos_token
+
+        explanation = tokenizer.decode(generated_ids[0], skip_special_tokens=True)
+        
+        return explanation
 
     def forward(
         self,
@@ -201,12 +236,19 @@ class DecisionTransformer(TrajectoryModel):
         x = transformer_outputs["last_hidden_state"]
         self.past_key_values = transformer_outputs["past_key_values"]
 
+        # Generate attention mask for explanation
+        # explanation_attention_mask = (input_ids != self.transformer_model.config.pad_token_id).long()
+
+        # explanation = self.generate_explanation(x, explanation_attention_mask)
+        # print("Explanation: ", explanation)
+
         # reshape x so that the second dimension corresponds to the original
         # returns (0), states (1), or actions (2); i.e. x[:,1,t] is the token for s_t
-        x = x.reshape(batch_size, seq_length, 3, self.hidden_size).permute(0, 2, 1, 3)
+        x = x.reshape(batch_size, seq_length, 3, self.hidden_size).permute(0, 2, 1, 3) # I think we need to snap this to generate text to let the model explain why we acted the way he did
 
         action_preds = self.predict_action(x[:, 1])  # predict next action given state
-        return None, action_preds, None, None
+
+        return None, action_preds, None, None 
 
     def get_action(
         self,

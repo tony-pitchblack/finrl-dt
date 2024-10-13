@@ -79,9 +79,9 @@ class Trainer:
             f"{self.args['outdir']}/model.pt",
         )
         
-        # pickle the loss list
-        with open(f"{self.args['outdir']}/train_loss_list.pkl", "wb") as f:
-            pickle.dump(train_loss_list, f)
+        # # pickle the loss list
+        # with open(f"{self.args['outdir']}/train_loss_list.pkl", "wb") as f:
+        #     pickle.dump(train_loss_list, f)
 
         return logs
 

@@ -93,10 +93,7 @@ def experiment(
         raise NotImplementedError
     
     if variant["model_type"] == "bc": # this is for simple MLP behavior cloning by Supervised Learning - no reward to go (rtg)
-        env_targets = env_targets[
-            :1
-        ]  # since BC does not use rtg, no need for varying rtgs
-    
+        env_targets = [0]  # since BC does not use rtg, no need for varying rtgs
     state_dim_train = env_train.observation_space.shape[0]
     act_dim_train = env_train.action_space.shape[0]
     print("act_dim_train:", act_dim_train)
@@ -259,10 +256,9 @@ def experiment(
                         state_std=state_std,
                         device=device,
                         variant=variant,
-                        test_trajectory=test_trajectory,
+                        eval_trajectory=test_trajectory,
                         train_or_test='test',
                     )
-                    
                 elif variant["model_type"] == "bc":
                     ret, length = evaluate_episode(
                         env_test,
@@ -274,6 +270,9 @@ def experiment(
                         state_mean=state_mean,
                         state_std=state_std,
                         device=device,
+                        variant=variant,
+                        eval_trajectory=test_trajectory,
+                        train_or_test='test',
                     )
 
             returns.append(ret)
@@ -308,21 +307,23 @@ def experiment(
                         state_std=state_std,
                         device=device,
                         variant=variant,
-                        test_trajectory=train_trajectory,
+                        eval_trajectory=train_trajectory,
                         train_or_test='train',
                     )
-
                 elif variant["model_type"] == "bc":
                     ret, length = evaluate_episode(
-                        env_test,
-                        state_dim,
-                        act_dim,
+                        env_train,
+                        state_dim_train,
+                        act_dim_train,
                         model,
-                        max_ep_len=max_ep_len,
+                        max_ep_len=max_ep_len_train,
                         target_return=target_raw / scale,
                         state_mean=state_mean,
                         state_std=state_std,
                         device=device,
+                        variant=variant,
+                        eval_trajectory=train_trajectory,
+                        train_or_test='train',
                     )
 
             returns.append(ret)
@@ -504,7 +505,7 @@ def experiment(
             get_batch=get_batch,
             scheduler=scheduler,
             loss_fn=lambda s_hat, a_hat, r_hat, s, a, r: torch.mean((a_hat - a) ** 2),
-            eval_fns=[eval_episodes_test(tar) for tar in env_targets_test],
+            eval_fns=[eval_episodes_train(tar) for tar in env_targets_train] + [eval_episodes_test(tar) for tar in env_targets_test],
         )
 
     trainer.train_iteration(

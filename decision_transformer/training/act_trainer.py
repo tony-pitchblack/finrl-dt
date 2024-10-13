@@ -22,6 +22,7 @@ class ActTrainer(Trainer):
             state_preds, action_preds, reward_preds,
             state_target, action_target, reward_target,
         )
+        print("act loss:", loss.item())
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()

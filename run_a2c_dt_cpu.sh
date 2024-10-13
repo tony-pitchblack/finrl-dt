@@ -1,11 +1,11 @@
 #!/bin/bash
 # run with: source run_stock_trading.sh "test_run" 123 0   
-conda activate finrl-dt
+# conda activate finrl-dt
 
 export TRANSFORMERS_OFFLINE=0
 export TOKENIZERS_PARALLELISM=0
 
-seed=11102
+seed=33333
 gpu=-1 # gpu identification number
 
 drl_alg=a2c # the deep reinforcement learning algorithm of which we are targeting to clone the behavior
@@ -16,14 +16,17 @@ lr=1e-3
 weight_decay=1e-5 # for AdamW optimizer
 dropout=0.1
 warmup_steps=2500
-num_steps=1 # total number of training steps; i.e., how many times we call env.step() for training
+num_steps=10 # total number of training steps; i.e., how many times we call env.step() for training
 
 # Environment parameters
 env=stock_trading
 dataset=your_dataset_name
-sample_ratio=1
+sample_ratio=0.1
 K=20  # Context length - this is for the decision transformer model; Seeing the K number of states in the past to make a prediction on next action
-dataset_path="./trajectories_a2c_1_2024-10-06_14-19-28.pkl" # path to the trajectory data; It's a list of dict, where each dict contains keys like "observations", "actions", "rewards", and "terminals"
+# dataset_path=train_trajectories_a2c_1_2024-10-11_16-03-20.pkl # path to the trajectory data; It's a list of dict, where each dict contains keys like "observations", "actions", "rewards", and "terminals"
+train_full_trajectory_file=train_trajectories_a2c_1_2024-10-11_16-03-20.pkl
+train_trajectory_file=data_downsamples/train_a2c_trajectory_10percent_2024-10-13_11-15-52.pkl
+test_trajectory_file=test_trajectories_a2c_1_2024-10-11_16-04-31.pkl
 
 # Device
 device='cpu' # or 'cuda'
@@ -31,19 +34,18 @@ device='cpu' # or 'cuda'
 # Pretrained language model
 pretrained_lm="gpt2" # this will trigger auto-downloading the gpt2 model from the Hugging Face model hub
 # pretrained_lm="/home/gridsan/syun/gpt2_model" # or, we can simply use the path to the downloaded gpt2 model
-lora=True
+lora=true
 
-exp_name="${drl_alg}_${model_type}_lora_${lora}_${pretrained_lm}_${seed}"
+exp_name="${drl_alg}_${model_type}_lora_gpt2_${seed}"
 
 outdir="checkpoints/${exp_name}"
 
-test_trajectory_file=test_trajectories_a2c_1_2024-10-11_13-14-50.pkl
 # Run the experiment
 CUDA_VISIBLE_DEVICES=${gpu} ~/gits/FinRL-Tutorials/.conda/bin/python experiment.py \
     --device ${device} \
     --env ${env} \
-    --dataset ${dataset} \
-    --dataset_path ${dataset_path} \
+    --train_full_trajectory_file ${train_full_trajectory_file} \
+    --train_trajectory_file ${train_trajectory_file} \
     --seed ${seed} \
     --K ${K} \
     --learning_rate ${lr} \

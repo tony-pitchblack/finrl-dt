@@ -1,5 +1,7 @@
 import numpy as np
 import torch
+import pickle
+import os
 
 def evaluate_episode(
     env,
@@ -11,6 +13,9 @@ def evaluate_episode(
     target_return=None,
     state_mean=0.0,
     state_std=1.0,
+    variant=None,
+    train_or_test='test',
+    eval_trajectory=None,
 ):
     model.eval()
     model.to(device=device)
@@ -32,8 +37,10 @@ def evaluate_episode(
     rewards = torch.zeros(0, device=device, dtype=torch.float32)
     target_return = torch.tensor(target_return, device=device, dtype=torch.float32)
     episode_return, episode_length = 0, 0
-    for t in range(max_ep_len):
+    total_asset_value_list = [env.initial_amount]
+    loss_list = []
 
+    for t in range(max_ep_len):
         # add padding
         actions = torch.cat([actions, torch.zeros((1, act_dim), device=device)], dim=0)
         rewards = torch.cat([rewards, torch.zeros(1, device=device)])
@@ -47,17 +54,50 @@ def evaluate_episode(
         actions[-1] = action
         action = action.detach().cpu().numpy()
 
+        # Calculate loss if eval_trajectory is provided
+        if eval_trajectory is not None:
+            expert_action = eval_trajectory[0]['actions'][t]
+            loss = torch.mean((torch.from_numpy(expert_action) - torch.from_numpy(action)) ** 2)
+            print("bc loss:", loss.item())
+            loss_list.append(loss.item())
+
         state, reward, done, _, _ = env.step(action)
 
-        # cur_state = torch.from_numpy(np.ndarray(state)).to(device=device).reshape(1, np.ndarray(state_dim))
+        # Update total asset value list
+        if t == 0:
+            pass
+        else:
+            total_asset_value_list.append(total_asset_value_list[-1] + reward * (1/env.reward_scaling))
+
         cur_state = torch.from_numpy(np.array(state)).to(device=device).reshape(1, state_dim)
         states = torch.cat([states, cur_state], dim=0)
         rewards[-1] = reward
+
+
+
+
 
         episode_return += reward
         episode_length += 1
 
         if done:
+            # Save data
+            outdir = variant.get('outdir', 'output')
+            os.makedirs(outdir, exist_ok=True)
+
+            # Save total asset value change
+            file_name = f'total_asset_value_change_{train_or_test}.pkl'
+            file_path = os.path.join(outdir, file_name)
+            with open(file_path, 'wb') as f:
+                pickle.dump(total_asset_value_list, f)
+
+            # Save loss list if available
+            if loss_list:
+                loss_list_file_name = f'{train_or_test}_loss_list.pkl'
+                loss_list_file_path = os.path.join(outdir, loss_list_file_name)
+                with open(loss_list_file_path, 'wb') as f:
+                    pickle.dump(loss_list, f)
+
             break
 
     return episode_return, episode_length
@@ -75,11 +115,11 @@ def evaluate_episode_rtg(
     device="cuda",
     target_return=None,
     target_reward_raw=None,
-    test_trajectory=None,
+    eval_trajectory=None,
     variant=None,
     train_or_test='test',
 ):
-    expert_actions = test_trajectory[0]['actions']
+    expert_actions = eval_trajectory[0]['actions']
 
     model.to(device=device)
 
@@ -105,7 +145,7 @@ def evaluate_episode_rtg(
 
     episode_return, episode_length = 0, 0
 
-    test_loss_list = []
+    loss_list = []
 
     for t in range(max_ep_len):
         # add padding
@@ -124,7 +164,7 @@ def evaluate_episode_rtg(
 
         expert_action = expert_actions[t]
         test_loss = torch.mean((torch.from_numpy(expert_action) - torch.from_numpy(action)) ** 2)
-        test_loss_list.append(test_loss.item())
+        loss_list.append(test_loss.item())
 
         print("env.initial_amount:", env.initial_amount)
         # Initialize or update total asset value list
@@ -138,6 +178,8 @@ def evaluate_episode_rtg(
             print("total_asset_value_list[-1]: at t:", t, "is", total_asset_value_list[-1])
         
         state, reward, done, _, _ = env.step(action)
+        print("reward:", reward)
+        total_asset_value_list.append(total_asset_value_list[-1] + reward * (1/env.reward_scaling))
 
         cur_state = torch.from_numpy(np.array(state)).to(device=device).reshape(1, state_dim)
         states = torch.cat([states, cur_state], dim=0)
@@ -168,11 +210,11 @@ def evaluate_episode_rtg(
             file_name = f'total_asset_value_change_{train_or_test}_env_{target_reward_raw}.pkl'
             file_path = os.path.join(outdir, file_name)
 
-            # Save the test_loss_list
+            # Save the loss list
             loss_list_file_name = f'{train_or_test}_loss_list_{target_reward_raw}.pkl'
             loss_list_file_path = os.path.join(outdir, loss_list_file_name)
             with open(loss_list_file_path, 'wb') as f:
-                pickle.dump(test_loss_list, f)
+                pickle.dump(loss_list, f)
 
             # Save the pickle file
             with open(file_path, 'wb') as f:
