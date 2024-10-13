@@ -63,11 +63,7 @@ def evaluate_episode(
 
         state, reward, done, _, _ = env.step(action)
 
-        # Update total asset value list
-        if t == 0:
-            pass
-        else:
-            total_asset_value_list.append(total_asset_value_list[-1] + reward * (1/env.reward_scaling))
+        total_asset_value_list.append(total_asset_value_list[-1] + reward * (1/env.reward_scaling))
 
         cur_state = torch.from_numpy(np.array(state)).to(device=device).reshape(1, state_dim)
         states = torch.cat([states, cur_state], dim=0)
