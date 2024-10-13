@@ -1,8 +1,8 @@
 #!/bin/bash
 #SBATCH -c 20                # Request 20 CPU cores
 #SBATCH --gres=gpu:volta:1   # Request 1 Volta GPU
-#SBATCH -o run_ddpg_dt_gpu.log-%j  # Output file
-#SBATCH -J run_ddpg_dt_gpu_job # Job name
+#SBATCH -o run_rw_dt_gpu.log-%j  # Output file
+#SBATCH -J run_rw_dt_gpu_job # Job name
 
 # Dynamically find the path to conda.sh based on the conda executable
 CONDA_PATH=$(dirname "$(dirname "$(which conda)")")/etc/profile.d/conda.sh
