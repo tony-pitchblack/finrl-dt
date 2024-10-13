@@ -310,6 +310,7 @@ def experiment(
                         eval_trajectory=train_trajectory,
                         train_or_test='train',
                     )
+                    
                 elif variant["model_type"] == "bc":
                     ret, length = evaluate_episode(
                         env_train,

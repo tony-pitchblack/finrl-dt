@@ -23,7 +23,6 @@ K=20  # Context length - this is for the decision transformer model; Seeing the 
 device='cuda' # or 'cuda'
 
 # Pretrained language model
-# pretrained_lm="gpt2" # this will trigger auto-downloading the gpt2 model from the Hugging Face model hub
 pretrained_lm="/home/gridsan/syun/gpt2_model" # Path to the downloaded GPT-2 model
 lora=true
 

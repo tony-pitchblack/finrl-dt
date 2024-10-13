@@ -147,6 +147,8 @@ def evaluate_episode_rtg(
 
     loss_list = []
 
+    total_asset_value_list = [env.initial_amount]
+
     for t in range(max_ep_len):
         # add padding
         actions = torch.cat([actions, torch.zeros((1, act_dim), device=device)], dim=0)
@@ -168,14 +170,14 @@ def evaluate_episode_rtg(
 
         print("env.initial_amount:", env.initial_amount)
         # Initialize or update total asset value list
-        if 'total_asset_value_list' not in locals():
-            total_asset_value_list = [env.initial_amount]
-            print("[1st] total_asset_value_list[-1]: at t:", t, "is", total_asset_value_list[-1])
-        else:
-            print("reward:", reward)
-            print("adding reward to total_asset_value_list:rewad*env.reward_scaling", reward*(1/env.reward_scaling))
-            total_asset_value_list.append(total_asset_value_list[-1] + reward * (1/env.reward_scaling))
-            print("total_asset_value_list[-1]: at t:", t, "is", total_asset_value_list[-1])
+        # if 'total_asset_value_list' not in locals():
+        #     total_asset_value_list = [env.initial_amount]
+        #     print("[1st] total_asset_value_list[-1]: at t:", t, "is", total_asset_value_list[-1])
+        # else:
+        #     print("reward:", reward)
+        #     print("adding reward to total_asset_value_list:rewad*env.reward_scaling", reward*(1/env.reward_scaling))
+        #     total_asset_value_list.append(total_asset_value_list[-1] + reward * (1/env.reward_scaling))
+        #     print("total_asset_value_list[-1]: at t:", t, "is", total_asset_value_list[-1])
         
         state, reward, done, _, _ = env.step(action)
         print("reward:", reward)
@@ -225,3 +227,7 @@ def evaluate_episode_rtg(
     model.past_key_values = None
 
     return episode_return, episode_length
+
+
+
+
