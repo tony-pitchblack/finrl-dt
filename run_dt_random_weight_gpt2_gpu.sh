@@ -48,7 +48,7 @@ for algo in "${algos[@]}"; do
         echo "Using dataset: $dataset_path"
         echo "Using test trajectory: $test_trajectory_file"
         
-        CUDA_VISIBLE_DEVICES=${gpu} ~/gits/FinRL-Tutorials/.conda/bin/python experiment.py \
+        CUDA_VISIBLE_DEVICES=${gpu} python experiment.py \
             --device ${device} \
             --env stock_trading \
             --dataset_path ${dataset_path} \
