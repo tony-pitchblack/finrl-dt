@@ -48,11 +48,17 @@ def collect_single_trajectory(env_kwargs, model, train_data):
 
         state = next_state
 
+    # Compute next_observations by shifting observations by one step
+    observations_np = np.array(observations)
+    next_observations_np = np.roll(observations_np, -1, axis=0)
+    next_observations_np[-1] = observations_np[-1]  # Last next_observation is same as last state
+    
     trajectory = {
         'observations': np.array(observations),
         'actions': np.array(actions),
         'rewards': np.array(rewards),
-        'terminals': np.array(dones)
+        'terminals': np.array(dones),
+        'next_observations': next_observations_np
     }
 
     return trajectory
@@ -62,8 +68,8 @@ if __name__ == "__main__":
     model_choices = ['a2c', 'ddpg', 'td3', 'ppo', 'sac']
     dataset_choices = ['train', 'test']
 
-    # Number of trajectories to collect
-    total_episodes = 1  # Adjust this number as needed
+    # Number of trajectories to collect per model
+    episodes_per_model = 1  # Keep this as 1
 
     # Ensure the 'data' directory exists
     data_dir = 'data'
@@ -96,6 +102,8 @@ if __name__ == "__main__":
             "reward_scaling": 1e-4
         }
 
+        ensemble_trajectories = []
+
         for model_choice in model_choices:
             # Load the model
             model_path = os.path.join(TRAINED_MODEL_DIR, f"agent_{model_choice}")
@@ -112,17 +120,26 @@ if __name__ == "__main__":
             else:
                 raise ValueError(f"Unknown model choice: {model_choice}")
 
-            # Collect trajectories
-            trajectories = []
-            for _ in tqdm(range(total_episodes), desc=f"Collecting Trajectories for {model_choice.upper()} on {train_or_test} data"):
-                trajectory = collect_single_trajectory(env_kwargs, model, data)
-                trajectories.append(trajectory)
-
-            # Save the trajectories to a pickle file
+            # Collect one trajectory for the current model
+            trajectory = collect_single_trajectory(env_kwargs, model, data)
+            
+            # Save individual model trajectory
             current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-            output_filename = f'{train_or_test}_trajectories_{model_choice}_{total_episodes}_{current_time}.pkl'
+            output_filename = f'{train_or_test}_{model_choice}_trajectory_{current_time}.pkl'
             output_path = os.path.join(data_dir, output_filename)
             with open(output_path, 'wb') as f:
-                pickle.dump(trajectories, f)
+                pickle.dump([trajectory], f)
+            
+            print(f"Saved 1 trajectory for {model_choice.upper()} on {train_or_test} data to '{output_path}'")
+            
+            # Add to ensemble trajectories
+            ensemble_trajectories.append(trajectory)
 
-            print(f"Collected {total_episodes} trajectories using {model_choice.upper()} model on {train_or_test} data and saved to '{output_path}'")
+        # Save the ensemble trajectories to a pickle file
+        current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        ensemble_filename = f'{train_or_test}_ensemble_trajectories_{len(model_choices)}_{current_time}.pkl'
+        ensemble_path = os.path.join(data_dir, ensemble_filename)
+        with open(ensemble_path, 'wb') as f:
+            pickle.dump(ensemble_trajectories, f)
+
+        print(f"Saved ensemble of {len(model_choices)} trajectories (one from each model) on {train_or_test} data to '{ensemble_path}'")

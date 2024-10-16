@@ -236,10 +236,7 @@ class DecisionTransformer(TrajectoryModel):
         x = transformer_outputs["last_hidden_state"]
         self.past_key_values = transformer_outputs["past_key_values"]
 
-        # Generate attention mask for explanation
-        # explanation_attention_mask = (input_ids != self.transformer_model.config.pad_token_id).long()
-
-        # explanation = self.generate_explanation(x, explanation_attention_mask)
+        # explanation = self.generate_explanation(x)
         # print("Explanation: ", explanation)
 
         # reshape x so that the second dimension corresponds to the original

@@ -10,7 +10,7 @@ exp_namea=a2c+ddpg_gpt2
 drl_algo="a2c+ddpg"
 
 # Model parameters
-lr=1e-4
+lr=1e-4tc
 lmlr=1e-5
 weight_decay=1e-5
 dropout=0.1

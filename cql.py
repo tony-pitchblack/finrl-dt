@@ -8,14 +8,14 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-import d4rl
+# import d4rl
 import gym
 import numpy as np
 import pyrallis
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import wandb
+# import wandb
 from torch.distributions import Normal, TanhTransform, TransformedDistribution
 
 TensorBatch = List[torch.Tensor]
@@ -24,19 +24,21 @@ TensorBatch = List[torch.Tensor]
 @dataclass
 class TrainConfig:
     # Experiment
-    device: str = "cuda:2"
-    env: str = "walker2d-medium-v2"  # OpenAI gym environment name
+    device: str = "cpu"
+    env: str = "stock_trading_env"  # OpenAI gym environment name
     seed: int = 0  # Sets Gym, PyTorch and Numpy seeds
     eval_freq: int = int(25000)  # How often (time steps) we evaluate
     n_episodes: int = 10  # How many episodes run during evaluation
-    max_timesteps: int = int(1e6)  # Max time steps to run environment
+    # max_timesteps: int = int(1e6)  # Max time steps to run environment
+    max_timesteps: int = int(1000)  # Max time steps to run environment
     checkpoints_path: Optional[str] = None  # Save path
     load_model: str = ""  # Model load file name, "" doesn't load
     sample_ratio: float = 1
+    dataset_path: str = ""  # Path to the dataset pickle file
 
     # CQL
     buffer_size: int = 2_000_000  # Replay buffer size
-    batch_size: int = 256  # Batch size for all networks
+    batch_size: int = 64  # Batch size for all networks
     discount: float = 0.99  # Discount factor
     alpha_multiplier: float = 1.0  # Multiplier for alpha in loss
     use_automatic_entropy_tuning: bool = True  # Tune entropy
@@ -61,16 +63,19 @@ class TrainConfig:
     reward_scale: float = 1.0  # Reward scale for normalization
     reward_bias: float = 0.0  # Reward bias for normalization
 
-    # AntMaze hacks
+    # # AntMaze hacks
     bc_steps: int = int(0)  # Number of BC steps at start
-    reward_scale: float = 5.0
-    reward_bias: float = -1.0
+    # reward_scale: float = 5.0
+    # reward_bias: float = -1.0
     policy_log_std_multiplier: float = 1.0
 
     # Wandb logging
     project: str = "wikiRL"
     group: str = env + '-cql'
     name: str = str(seed)
+
+    drl_algo: str = "a2c"  # Add this line to include the drl_algo in the config
+    test_trajectory: str = ""
 
     def __post_init__(self):
         self.name = f"{self.name}-{self.env}-{str(uuid.uuid4())[:8]}"
@@ -91,7 +96,6 @@ def compute_mean_std(states: np.ndarray, eps: float) -> Tuple[np.ndarray, np.nda
 
 def normalize_states(states: np.ndarray, mean: np.ndarray, std: np.ndarray):
     return (states - mean) / std
-
 
 def wrap_env(
     env: gym.Env,
@@ -162,6 +166,24 @@ class ReplayBuffer:
 
         print(f"Dataset size: {n_transitions}")
 
+    def load_custom_dataset(self, data: Dict[str, np.ndarray]):
+        if self._size != 0:
+            raise ValueError("Trying to load data into a non-empty replay buffer")
+        n_transitions = data["observations"].shape[0]
+        if n_transitions > self._buffer_size:
+            raise ValueError(
+                "Replay buffer is smaller than the dataset you are trying to load!"
+            )
+        self._states[:n_transitions] = self._to_tensor(data["observations"])
+        self._actions[:n_transitions] = self._to_tensor(data["actions"])
+        self._rewards[:n_transitions] = self._to_tensor(data["rewards"][..., None])
+        self._next_states[:n_transitions] = self._to_tensor(data["next_observations"])
+        self._dones[:n_transitions] = self._to_tensor(data["terminals"][..., None])
+        self._size += n_transitions
+        self._pointer = min(self._size, n_transitions)
+
+        print(f"Dataset loaded with {n_transitions} transitions.")
+
     def sample(self, batch_size: int) -> TensorBatch:
         indices = np.random.randint(0, min(self._size, self._pointer), size=batch_size)
         states = self._states[indices]
@@ -183,23 +205,23 @@ def set_seed(
     if env is not None:
         env.seed(seed)
         env.action_space.seed(seed)
-    os.environ["PYTHONHASHSEED"] = str(seed)
     np.random.seed(seed)
     random.seed(seed)
     torch.manual_seed(seed)
     torch.use_deterministic_algorithms(deterministic_torch)
+    torch.backends.cudnn.deterministic = True
 
 
-def wandb_init(config: dict) -> None:
-    wandb.init(
-        config=config,
-        project=config["project"],
-        group=config["group"],
-        entity="human-dex",
-        name=config["name"],
-        id=str(uuid.uuid4()),
-    )
-    wandb.run.save()
+# def wandb_init(config: dict) -> None:
+#     wandb.init(
+#         config=config,
+#         project=config["project"],
+#         group=config["group"],
+#         entity="human-dex",
+#         name=config["name"],
+#         id=str(uuid.uuid4()),
+#     )
+#     wandb.run.save()
 
 
 @torch.no_grad()
@@ -379,6 +401,13 @@ class TanhGaussianPolicy(nn.Module):
 
     @torch.no_grad()
     def act(self, state: np.ndarray, device: str = "cpu"):
+        print("state type", type(state))
+        if isinstance(state, tuple) :
+            state = np.array(state[0])
+        if isinstance(state, list):
+            # print("state type", type(state))
+            # print("state", state)
+            state = np.array(state)
         state = torch.tensor(state.reshape(1, -1), device=device, dtype=torch.float32)
         with torch.no_grad():
             actions, _ = self(state, not self.training)
@@ -450,8 +479,8 @@ class ContinuousCQL:
         alpha_multiplier: float = 1.0,
         use_automatic_entropy_tuning: bool = True,
         backup_entropy: bool = False,
-        policy_lr: bool = 3e-4,
-        qf_lr: bool = 3e-4,
+        policy_lr: float = 3e-4,
+        qf_lr: float = 3e-4,
         soft_target_update_rate: float = 5e-3,
         bc_steps=100000,
         target_update_period: int = 1,
@@ -534,6 +563,9 @@ class ContinuousCQL:
             alpha_loss = observations.new_tensor(0.0)
             alpha = observations.new_tensor(self.alpha_multiplier)
         return alpha, alpha_loss
+    
+    def cloning_loss(self, predicted_actions, true_actions):
+        return F.mse_loss(predicted_actions, true_actions)
 
     def _policy_loss(
         self,
@@ -552,6 +584,7 @@ class ContinuousCQL:
                 self.critic_2(observations, new_actions),
             )
             policy_loss = (alpha * log_pi - q_new_actions).mean()
+        
         return policy_loss
 
     def _q_loss(
@@ -753,6 +786,10 @@ class ContinuousCQL:
 
         alpha, alpha_loss = self._alpha_and_alpha_loss(observations, log_pi)
 
+        """cloning loss"""
+        cloning_loss = self.cloning_loss(new_actions, actions)
+        print("cloning_loss", cloning_loss)
+
         """ Policy loss """
         policy_loss = self._policy_loss(
             observations, actions, new_actions, alpha, log_pi
@@ -784,6 +821,10 @@ class ContinuousCQL:
         qf_loss.backward(retain_graph=True)
         self.critic_1_optimizer.step()
         self.critic_2_optimizer.step()
+
+        print("alpha_loss", alpha_loss)
+        print("qf_loss", qf_loss)
+        print("policy_loss", policy_loss)
 
         if self.total_it % self.target_update_period == 0:
             self.update_target_network(self.soft_target_update_rate)
@@ -875,26 +916,171 @@ def get_dataset(env, ratio):
         terminals=dones
     )
 
+## BackTesting Code ###
+import pandas as pd
+# --- Custom Backtesting Function ---
+import pickle
+from datetime import datetime
+
+def backtest_cql_agent(env, agent, device, n_episodes=10, variant=None, target_reward_raw=None, train_or_test='test', drl_algo='cql', random_seed=0, dataset_path=None, test_trajectory=None):
+    total_asset_lists = []
+
+    # Load the appropriate dataset based on train_or_test
+    if train_or_test == 'train':
+        with open(dataset_path, 'rb') as f:
+            data = pickle.load(f)
+        actual_actions = data[0]['actions']
+    else:  # test case
+        with open(test_trajectory, 'rb') as f:
+            data = pickle.load(f)
+        actual_actions = data[0]['actions']
+
+    for episode in range(n_episodes):
+        reset_output = env.reset()
+        print(f"Episode {episode + 1} reset_output:", reset_output)
+
+        if isinstance(reset_output, tuple):
+            state, _ = reset_output
+        else:
+            state = reset_output
+        done = False
+        episode_reward = 0.0
+        actions_taken = []
+
+        initial_amount = env.initial_amount if hasattr(env, 'initial_amount') else 1000000.00
+        total_asset_value_list = [initial_amount]
+        episode_bc_losses = []
+        print(f"Initial asset value: {initial_amount}")
+
+        t = 0
+        while not done:
+            # Get the predicted action from the agent
+            predicted_action = agent.actor.act(state, device)
+            
+            # Get the actual action from the loaded dataset
+            actual_action = actual_actions[t]
+            
+            next_output = env.step(predicted_action)
+
+            if isinstance(next_output, tuple):
+                if len(next_output) == 4:
+                    next_state, reward, done, info = next_output
+                elif len(next_output) == 5:
+                    next_state, reward, done, truncated, info = next_output
+                else:
+                    raise ValueError(f"Unexpected return format from env.step(): {next_output}")
+            else:
+                raise ValueError(f"Unexpected return type from env.step(): {type(next_output)}")
+
+            # Calculate behavior cloning loss (MSE between predicted and actual action)
+            bc_loss = torch.nn.functional.mse_loss(
+                torch.tensor(predicted_action, device=device),
+                torch.tensor(actual_action, device=device)
+            ).item()
+            print("Behavior cloning loss:", bc_loss)
+            episode_bc_losses.append(bc_loss)
+
+            print("Reward:", reward)
+            scaled_reward = reward * (1 / env.reward_scaling) if hasattr(env, 'reward_scaling') else reward
+            print("Adding scaled reward to total_asset_value_list:", scaled_reward)
+            new_total_asset = total_asset_value_list[-1] + scaled_reward
+            total_asset_value_list.append(new_total_asset)
+            print(f"Total asset at timestep {t}: {new_total_asset}")
+
+            episode_reward += reward
+            actions_taken.append(actual_action)
+            t += 1
+            state = next_state
+
+        total_asset_value_list = total_asset_value_list[:-1]
+        
+        # Create directory for storing pickle files
+        checkpoint_dir = f"checkpoints/{drl_algo}_cql_{random_seed}"
+        os.makedirs(checkpoint_dir, exist_ok=True)
+
+        # Save total asset values
+        asset_pkl_filename = f'total_asset_value_change_{train_or_test}.pkl'
+        asset_pkl_path = os.path.join(checkpoint_dir, asset_pkl_filename)
+        with open(asset_pkl_path, 'wb') as f:
+            pickle.dump(total_asset_value_list, f)
+        print(f"Saved asset values to {asset_pkl_path}")
+
+        # Save behavior cloning losses
+        bc_loss_pkl_filename = f'{train_or_test}_loss_list.pkl'
+        bc_loss_pkl_path = os.path.join(checkpoint_dir, bc_loss_pkl_filename)
+        with open(bc_loss_pkl_path, 'wb') as f:
+            pickle.dump(episode_bc_losses, f)
+        print(f"Saved behavior cloning losses to {bc_loss_pkl_path}")
+
+        break  # Remove this if you want to run multiple episodes
+
+    return total_asset_lists, episode_bc_losses
+
 @pyrallis.wrap()
 def train(config: TrainConfig, args):
     config.env = args.env
     config.seed = args.seed
     config.sample_ratio = args.sample_ratio
-    config.group = config.env + "-cql" + "-ratio=" + str(config.sample_ratio) + "-lr=" + str(args.policy_lr) + '-qlr=' + str(args.qf_lr)
-    config.device = 'cuda:' + str(args.device)
+    # config.group = config.env + "-cql" + "-ratio=" + str(config.sample_ratio) + "-lr=" + str(args.policy_lr) + '-qlr=' + str(args.qf_lr)
+    config.device = 'cpu'
     config.policy_lr = args.policy_lr
     config.qf_lr = args.qf_lr
     
-    if (config.env == 'reacher2d-medium-v2'):
-        from reacher_2d import Reacher2dEnv
-        env = Reacher2dEnv()
-    else:
-        env = gym.make(config.env)
+    # Set seed for reproducibility
+    set_seed(config.seed)
+    
+    # prep for training env. We need train.csv for such prep of environment.
+    import pandas as pd
+    train_data_file = 'train_data.csv'
+    train_pd = pd.read_csv(train_data_file)
+    train_pd = train_pd.set_index(train_pd.columns[0])
+    train_pd.index.names = ['']
+
+    from finrl.meta.env_stock_trading.env_stocktrading import StockTradingEnv
+
+    # Define environment parameters
+    from finrl.config import INDICATORS, TRAINED_MODEL_DIR
+    stock_dimension = len(train_pd.tic.unique())
+    state_space = 1 + 2 * stock_dimension + len(INDICATORS) * stock_dimension
+    buy_cost_list = sell_cost_list = [0.001] * stock_dimension
+    num_stock_shares = [0] * stock_dimension
+
+    env_kwargs = {
+        "hmax": 100,
+        "initial_amount": 1000000,
+        "num_stock_shares": num_stock_shares,
+        "buy_cost_pct": buy_cost_list,
+        "sell_cost_pct": sell_cost_list,
+        "state_space": state_space,
+        "stock_dim": stock_dimension,
+        "tech_indicator_list": INDICATORS,  # Define your technical indicators
+        "action_space": stock_dimension,
+        "reward_scaling": 1e-4
+    }
+
+    env = StockTradingEnv(df=train_pd, **env_kwargs)
 
     state_dim = env.observation_space.shape[0]
     action_dim = env.action_space.shape[0]
+    print(state_dim, action_dim)
+    
+    print("open up pickle file trajectories")
+    # dataset = get_dataset(config.env, config.sample_ratio)
+    # open up pickle file trajectories_a2c_1_2024-10-06_14-19-28_cql.pkl and make it into dataset
+    with open(args.dataset_path, 'rb') as f:
+        data = pickle.load(f)
 
-    dataset = get_dataset(config.env, config.sample_ratio)
+    print(len(data))
+
+    data_0 = data[0]
+
+    dataset = dict(
+        observations=data_0['observations'],
+        actions=data_0['actions'],
+        next_observations=data_0['next_observations'],
+        rewards=data_0['rewards'],
+        terminals=data_0['terminals']
+    )
 
     if config.normalize_reward:
         modify_reward(
@@ -922,8 +1108,8 @@ def train(config: TrainConfig, args):
         config.buffer_size,
         config.device,
     )
-    replay_buffer.load_d4rl_dataset(dataset)
-
+    # replay_buffer.load_d4rl_dataset(dataset)
+    replay_buffer.load_custom_dataset(dataset)
     max_action = float(env.action_space.high[0])
 
     if config.checkpoints_path is not None:
@@ -931,10 +1117,6 @@ def train(config: TrainConfig, args):
         os.makedirs(config.checkpoints_path, exist_ok=True)
         with open(os.path.join(config.checkpoints_path, "config.yaml"), "w") as f:
             pyrallis.dump(config, f)
-
-    # Set seeds
-    seed = config.seed
-    set_seed(seed, env)
 
     critic_1 = FullyConnectedQFunction(
         state_dim,
@@ -988,7 +1170,7 @@ def train(config: TrainConfig, args):
     }
 
     print("---------------------------------------")
-    print(f"Training CQL, Env: {config.env}, Seed: {seed}")
+    print(f"Training CQL, Env: {config.env},Seed: {config.seed}")
     print("---------------------------------------")
 
     # Initialize actor
@@ -999,50 +1181,92 @@ def train(config: TrainConfig, args):
         trainer.load_state_dict(torch.load(policy_file))
         actor = trainer.actor
 
-    wandb_init(asdict(config))
+    # wandb_init(asdict(config))
 
     evaluations = []
     for t in range(int(config.max_timesteps)):
+        print("time step", t)
         batch = replay_buffer.sample(config.batch_size)
         batch = [b.to(config.device) for b in batch]
         log_dict = trainer.train(batch)
-        # Evaluate episode
-        if (t + 1) % config.eval_freq == 0:
-            print(f"Time steps: {t + 1}")
-            eval_scores = eval_actor(
-                env,
-                actor,
-                device=config.device,
-                n_episodes=config.n_episodes,
-                seed=config.seed,
-            )
-            eval_score = eval_scores.mean()
-            normalized_eval_score = env.get_normalized_score(eval_score) * 100.0
-            evaluations.append(normalized_eval_score)
-            print("---------------------------------------")
-            print(
-                f"Evaluation over {config.n_episodes} episodes: "
-                f"{eval_score:.3f} , D4RL score: {normalized_eval_score:.3f}"
-            )
-            print("---------------------------------------")
-            if config.checkpoints_path:
-                torch.save(
-                    trainer.state_dict(),
-                    os.path.join(config.checkpoints_path, f"checkpoint_{t}.pt"),
-                )
-            wandb.log(
-                {"d4rl_normalized_score": normalized_eval_score},
-                step=trainer.total_it,
-            )
 
-import argparse
+    # --- Backtesting ---
+    print("Starting Backtesting...")
+
+    # Initialize backtesting environment for test data
+    test_data_file = 'test_data.csv'
+    test_pd = pd.read_csv(test_data_file)
+    test_pd = test_pd.set_index(test_pd.columns[0])
+    test_pd.index.names = ['']
+
+    # Reinitialize the environment for backtesting (test)
+    test_env = StockTradingEnv(df=test_pd, turbulence_threshold=70, risk_indicator_col='vix', **env_kwargs)
+
+    # Initialize backtesting environment for train data
+    train_data_file = 'train_data.csv'
+    train_pd = pd.read_csv(train_data_file)
+    train_pd = train_pd.set_index(train_pd.columns[0])
+    train_pd.index.names = ['']
+    train_env = StockTradingEnv(df=train_pd, turbulence_threshold=70, risk_indicator_col='vix', **env_kwargs)
+
+    # Define variant and target_reward_raw if needed
+    variant = {
+        'exp_name': 'cql_experiment',
+        'drl_algo': 'CQL'
+    }
+    target_reward_raw = 1381034  # Replace with the actual target reward if needed
+
+    # Backtest the CQL agent on test data
+    backtest_cql_agent(
+        env=test_env,
+        agent=trainer,
+        device=config.device,
+        n_episodes=config.n_episodes,
+        variant=variant,
+        target_reward_raw=target_reward_raw,
+        train_or_test='test',
+        drl_algo=config.drl_algo,
+        random_seed=config.seed,
+        dataset_path=args.dataset_path,
+        test_trajectory=args.test_trajectory
+    )
+
+    # Backtest the CQL agent on train data
+    backtest_cql_agent(
+        env=train_env,
+        agent=trainer,
+        device=config.device,
+        n_episodes=config.n_episodes,
+        variant=variant,
+        target_reward_raw=target_reward_raw,
+        train_or_test='train',
+        drl_algo=config.drl_algo,
+        random_seed=config.seed,
+        dataset_path=args.dataset_path,
+        test_trajectory=args.test_trajectory
+    )
+
 if __name__ == "__main__":
+    import argparse
     parser = argparse.ArgumentParser()
+    parser.add_argument("--drl_algo", type=str, default="a2c", help="Name of the DRL algorithm")
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--sample_ratio", type=float, default=1)
     parser.add_argument("--env", type=str, default=None)
     parser.add_argument("--device", type=int, default=0)
     parser.add_argument("--policy_lr", type=float, default=3e-5)
     parser.add_argument("--qf_lr", type=float, default=3e-4)
+    parser.add_argument("--dataset_path", type=str, 
+                        default='data/train_a2c_trajectory_2024-10-13_12-47-12.pkl',
+                        help="Path to the dataset pickle file")
+    parser.add_argument("--test_trajectory", type=str,
+                        help="Path to the test trajectory pickle file", 
+                        default='data/test_a2c_trajectory_2024-10-13_12-48-25.pkl')
     args = parser.parse_args()
+    
+    # Set global random seed
+    torch.manual_seed(args.seed)
+    np.random.seed(args.seed)
+    random.seed(args.seed)
+    
     train(args=args)

@@ -74,25 +74,25 @@ def evaluate(variant):
     model.eval()
 
     # Evaluate for different target rewards
-    target_rewards = [1_500_000]
+    target_rewards = [2_000_000]
     for target_rew in target_rewards:
         returns = []
-        for _ in range(variant["num_eval_episodes"]):
-            with torch.no_grad():
-                ret, _ = evaluate_episode_rtg(
-                    env,
-                    state_dim,
-                    act_dim,
-                    model,
-                    max_ep_len=max_ep_len,
-                    scale=scale,
-                    target_return=target_rew / scale,
-                    mode="normal",
-                    state_mean=None,
-                    state_std=None,
-                    device=variant["device"],
-                )
-            returns.append(ret)
+        with torch.no_grad():
+            ret, _ = evaluate_episode_rtg(
+                env,
+                state_dim,
+                act_dim,
+                model,
+                max_ep_len=max_ep_len,
+                scale=scale,
+                target_reward_raw=target_rew,
+                target_return=target_rew / scale,
+                mode="normal",
+                state_mean=None,
+                state_std=None,
+                device=variant["device"],
+            )
+        returns.append(ret)
         
         mean_return = np.mean(returns)
         std_return = np.std(returns)
@@ -110,7 +110,6 @@ if __name__ == "__main__":
     parser.add_argument("--pretrained_lm", type=str, required=True, help="Name or path of the pretrained language model")
     parser.add_argument("--device", type=str, default="cuda")
     parser.add_argument("--env", type=str, default="stock_trading")
-    parser.add_argument("--dataset", type=str, default="your_dataset_name")
     parser.add_argument("--K", type=int, default=20)
     parser.add_argument("--dropout", type=float, default=0.1)
     parser.add_argument("--mlp_embedding", action="store_true")
@@ -118,7 +117,6 @@ if __name__ == "__main__":
     parser.add_argument("--model_type", type=str, default="dt")  # dt for decision transformer, bc for behavior cloning
     parser.add_argument("--seed", type=int, default=666)
     parser.add_argument("--sample_ratio", type=float, default=1.0)
-    parser.add_argument("--description", type=str, default="")
 
     parser.add_argument("--pct_traj", type=float, default=1.0)
     parser.add_argument("--batch_size", type=int, default=64)
@@ -126,7 +124,7 @@ if __name__ == "__main__":
 
     # architecture, don't need to care about in our method
     parser.add_argument("--embed_dim", type=int, default=128)
-    parser.add_argument("--n_layer", type=int, default=3)
+    parser.add_argument("--n_layer", type=int, default=5)
     parser.add_argument("--n_head", type=int, default=1)
     parser.add_argument("--activation_function", type=str, default="relu")
     parser.add_argument("--extend_positions", action="store_true", default=False)
