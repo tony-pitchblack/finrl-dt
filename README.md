@@ -1,5 +1,5 @@
-# finrl-dt
-test decision transformer on finrl env
+# FinRL-DT: Replication Code for "Pretrained LLM Adapted with LoRA as a Decision Transformer for Offline RL in Quantitative Trading"
 
-cd experiment-finrl
-source ./run_stock_trading.sh "test_run" 123 0
+This repository contains the replication code for the paper:
+
+"Pretrained LLM Adapted with LoRA as a Decision Transformer for Offline RL in Quantitative Trading"
