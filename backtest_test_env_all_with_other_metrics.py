@@ -16,12 +16,6 @@ from finrl.config import INDICATORS, TRAINED_MODEL_DIR
 def calculate_mdd(asset_values):
     """
     Calculate the Maximum Drawdown (MDD) of a portfolio.
-
-    Parameters:
-    - asset_values (pd.Series): Cumulative asset values over time.
-
-    Returns:
-    - float: Maximum Drawdown percentage.
     """
     running_max = asset_values.cummax()
     drawdown = (asset_values - running_max) / running_max
@@ -31,16 +25,9 @@ def calculate_mdd(asset_values):
 def calculate_sharpe_ratio(asset_values, risk_free_rate=0.0):
     """
     Calculate the Sharpe Ratio of a portfolio.
-
-    Parameters:
-    - asset_values (pd.Series): Cumulative asset values over time.
-    - risk_free_rate (float): Risk-free rate (default is 0).
-
-    Returns:
-    - float: Sharpe Ratio.
     """
     # Calculate daily returns
-    returns = asset_values.pct_change(fill_method=None).dropna()
+    returns = asset_values.pct_change().dropna()
     excess_returns = returns - risk_free_rate / 252  # Assuming 252 trading days
     if excess_returns.std() == 0:
         return 0.0
@@ -58,6 +45,21 @@ trade = trade.set_index(trade.columns[0])
 trade.index.names = ['']
 
 algorithms = ['a2c', 'ddpg', 'ppo', 'td3', 'sac']
+
+# Define a mapping for better legend labels
+label_mapping = {
+    'DT_LoRA_GPT2': 'DT-LoRA-GPT2',
+    'DT_LoRA_Random_Weight_GPT2': 'DT-LoRA-Random-GPT2',
+    'CQL': 'Conservative Q-Learning',
+    'IQL': 'Implicit Q-Learning',
+    'BC': 'Behavior Cloning',
+    'A2C': 'A2C',
+    'DDPG': 'DDPG',
+    'PPO': 'PPO',
+    'TD3': 'TD3',
+    'SAC': 'SAC',
+    'DJIA': 'Dow Jones Index'
+}
 
 for current_algo in algorithms:
     # Reset all algorithms to False
@@ -93,7 +95,7 @@ for current_algo in algorithms:
 
     # Define environment parameters
     stock_dimension = len(trade.tic.unique())
-    state_space = 1 + 2*stock_dimension + len(INDICATORS)*stock_dimension
+    state_space = 1 + 2 * stock_dimension + len(INDICATORS) * stock_dimension
     print(f"Stock Dimension: {stock_dimension}, State Space: {state_space}")
 
     buy_cost_list = sell_cost_list = [0.001] * stock_dimension
@@ -195,7 +197,7 @@ for current_algo in algorithms:
             df.index = result.index  # Assuming the dates align with the existing result dataframe
             result = pd.merge(result, df, how='outer', left_index=True, right_index=True)
 
-    # Create column names list
+    # Create column names list with better formatting
     col_name = []
     if if_using_a2c: col_name.append('A2C')
     if if_using_ddpg: col_name.append('DDPG')
@@ -332,8 +334,9 @@ for current_algo in algorithms:
             sharpe_mean = np.mean(sharpe_ratios)
             sharpe_std = np.std(sharpe_ratios)
 
-        # Append to metrics_dict
-        metrics_dict['Method'].append(exp_name)
+        # Append to metrics_dict with mapped label
+        mapped_exp_name = label_mapping.get(exp_name, exp_name)
+        metrics_dict['Method'].append(mapped_exp_name)
         metrics_dict['Cumulative Return Mean (%)'].append(cumulative_return_mean)
         metrics_dict['Cumulative Return Std (%)'].append(cumulative_return_std)
         metrics_dict['MDD Mean (%)'].append(mdd_mean)
@@ -342,12 +345,17 @@ for current_algo in algorithms:
         metrics_dict['Sharpe Ratio Std'].append(sharpe_std)
 
         # Store in experiment_stats for plotting
-        experiment_stats[exp_name] = {'mean': exp_data.mean(axis=1), 'std': exp_data.std(axis=1)}
+        experiment_stats[mapped_exp_name] = {'mean': exp_data.mean(axis=1), 'std': exp_data.std(axis=1)}
 
     # Calculate metrics for individual algorithms (A2C, DDPG, TD3, SAC, PPO)
     individual_algos = ['A2C', 'DDPG', 'TD3', 'SAC', 'PPO']
     for algo in individual_algos:
         if algo in result.columns:
+            # Check if this algorithm is already part of experiment_groups
+            if label_mapping.get(algo, algo) in experiment_stats:
+                print(f"Info: '{algo}' is already included in experiment groups. Skipping individual plotting to avoid duplication.")
+                continue  # Skip to prevent duplicate plotting
+
             asset_values = result[algo].dropna()
             if asset_values.empty:
                 print(f"Warning: No valid asset values for individual algorithm '{algo}'. Skipping metrics calculation.")
@@ -361,14 +369,18 @@ for current_algo in algorithms:
             mdd = calculate_mdd(asset_values)
             # Sharpe Ratio
             sharpe = calculate_sharpe_ratio(asset_values)
-            # Append to metrics_dict
-            metrics_dict['Method'].append(algo)
+            # Append to metrics_dict with mapped label
+            mapped_algo = label_mapping.get(algo, algo)
+            metrics_dict['Method'].append(mapped_algo)
             metrics_dict['Cumulative Return Mean (%)'].append(cum_ret)
             metrics_dict['Cumulative Return Std (%)'].append(0.00)  # Single run, std is 0
             metrics_dict['MDD Mean (%)'].append(mdd)
             metrics_dict['MDD Std (%)'].append(0.00)  # Single run, std is 0
             metrics_dict['Sharpe Ratio Mean'].append(sharpe)
             metrics_dict['Sharpe Ratio Std'].append(0.00)  # Single run, std is 0
+
+            # Store in experiment_stats for plotting
+            experiment_stats[mapped_algo] = {'mean': asset_values, 'std': pd.Series([0]*len(asset_values), index=asset_values.index)}
 
     # Convert metrics_dict to DataFrame
     metrics_df = pd.DataFrame(metrics_dict)
@@ -425,13 +437,30 @@ for current_algo in algorithms:
             experiment_stats[exp_name]['std'] = stats['std'].reindex(result.index).fillna(0)
 
     # Plotting section
-    plt.figure(figsize=(15, 8))
-
+    plt.figure(figsize=(16, 9))  # Increased figure size for better readability
+    method_styles = {
+    'CQL': {'color': '#1f77b4', 'linestyle': '-'},           # Blue solid
+    'IQL': {'color': '#ff7f0e', 'linestyle': '--'},          # Orange dashed
+    'BC': {'color': '#2ca02c', 'linestyle': '-.'},           # Green dash-dot
+    'DT LoRA GPT2': {'color': '#d62728', 'linestyle': ':'},  # Red dotted
+    'DT LoRA Random Weight GPT2': {'color': '#9467bd', 'linestyle': '-'},  # Purple solid
+    'A2C': {'color': '#8c564b', 'linestyle': '--'},          # Brown dashed
+    'DDPG': {'color': '#e377c2', 'linestyle': '-'},          # Pink solid
+    'PPO': {'color': '#7f7f7f', 'linestyle': '-'},           # Gray solid
+    'TD3': {'color': '#bcbd22', 'linestyle': '--'},          # Olive dashed
+    'SAC': {'color': '#17becf', 'linestyle': '-'},           # Cyan solid
+    'DJIA': {'color': '#000000', 'linestyle': '-'},          # Black solid
+    # Add more methods here if needed
+}
     # Plot DJIA
-    plt.plot(result.index, result['DJIA'], label="Dow Jones Index", linewidth=2, color='#1A1A1A', alpha=0.7)
+    plt.plot(result.index, result['DJIA'], label="Dow Jones Index", linestyle=method_styles['DJIA']['linestyle'], color=method_styles['DJIA']['color'])
+
+    # Define color palette and line styles
+    color_palette = plt.get_cmap('tab10').colors  # Colorblind-friendly palette
+    line_styles = ['-', '--', '-.', ':']  # Different line styles
 
     # Plot experiment groups
-    for exp_name, stats in experiment_stats.items():
+    for idx, (exp_name, stats) in enumerate(experiment_stats.items()):
         mean = stats['mean']
         std = stats['std']
         
@@ -439,25 +468,58 @@ for current_algo in algorithms:
         mean = mean.reindex(result.index).fillna(method='ffill')
         std = std.reindex(result.index).fillna(0)
 
+        # Assign colors and line styles
+        # color = color_palette[idx % len(color_palette)]
+        # linestyle = line_styles[idx % len(line_styles)]
+
+        def exp_name_formatter(exp_name):
+            exp_names = exp_name.split('_')
+            if len(exp_names) == 1:
+                return exp_name
+            elif len(exp_names) == 2:
+                return exp_names[1].upper()
+            elif len(exp_names) == 3:
+                return None
+            elif len(exp_names) == 4:
+                return exp_names[1].upper() + ' LoRA ' + 'GPT2'
+            elif len(exp_names) == 6:
+                return exp_names[1].upper() + ' LoRA ' + 'Random Weight ' + 'GPT2'
+            else:
+                return exp_name
+
         # Plot mean
-        line, = plt.plot(result.index, mean, label=exp_name, linewidth=2)
+        line, = plt.plot(result.index, mean, label=exp_name_formatter(exp_name), linestyle=method_styles[exp_name_formatter(exp_name)]['linestyle'], color=method_styles[exp_name_formatter(exp_name)]['color'])
         
-        # Plot error bands (mean ± 1 std)
-        plt.fill_between(result.index, mean - std, mean + std, color=line.get_color(), alpha=0.2)
+        # Plot error bandsy (mean ± 1 std)
+        plt.fill_between(result.index, mean - std, mean + std, color=method_styles[exp_name_formatter(exp_name)]['color'], alpha=0.2)
 
-    # Plot individual models if they exist
-    for model in ['A2C', 'DDPG', 'TD3', 'SAC', 'PPO']:
-        if model in result.columns:
-            plt.plot(result.index, result[model], label=model, linestyle='--', linewidth=2)
+    # Set title and labels with enhanced formatting
+    plt.title(f"Performance Comparison Under {current_algo.upper()} Expert Agent", fontsize=20, fontweight='bold')
+    plt.xlabel("Date", fontsize=16, fontweight='bold')
+    plt.ylabel("Total Asset Value ($)", fontsize=16, fontweight='bold')
 
-    plt.title("Backtest Results from Checkpoints (with DJIA)", fontsize=16, fontweight='bold')
-    plt.xlabel("Date", fontsize=12)
-    plt.ylabel("Total Asset Value", fontsize=12)
-    plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=10)
+    # import matplotlib.dates as mdates
+    plt.xticks(result.index[0::30])
+    # Add 'Test Phase' annotation with date range
+    plt.text(0.5, 0.95, 'Test Phase: July 1, 2020 - October 29, 2021', 
+             transform=plt.gca().transAxes, fontsize=14, ha='center',
+             bbox=dict(boxstyle="round,pad=0.3", facecolor="white", alpha=0.5))
+
+    # After all lines are plotted, sort the legend alphabetically
+    handles, labels = plt.gca().get_legend_handles_labels()
+    sorted_pairs = sorted(zip(labels, handles), key=lambda t: t[0].lower())  # Sort alphabetically, case-insensitive
+    sorted_labels, sorted_handles = zip(*sorted_pairs)
+
+    # Position legend outside the plot with sorted items
+    plt.legend(sorted_handles, sorted_labels, loc='upper left', bbox_to_anchor=(1.02, 1), fontsize=12)
+
+    # Enhance layout and aesthetics
     plt.tight_layout()
     plt.grid(True, linestyle='--', alpha=0.3)
-    plt.savefig(f'backtest_result_from_checkpoints_with_djia_and_error_bands_test_env_{current_algo}.png', dpi=300, bbox_inches='tight')
+
+    # Save the plot with an informative filename
+    plt.savefig(f'performance_comparison_DT-LoRA-GPT2_{current_algo.upper()}_Expert.png', dpi=300, bbox_inches='tight')
     plt.close()
 
-    print(f"Results saved as 'backtest_result_from_checkpoints_with_djia_and_error_bands_test_env_{current_algo}.png'")
+    print(f"Results saved as 'performance_comparison_DT-LoRA-GPT2_{current_algo.upper()}_Expert.png'")
     print("----------------------------------------")
