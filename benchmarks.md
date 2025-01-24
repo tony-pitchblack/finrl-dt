@@ -56,5 +56,5 @@
 | Total timesteps| Steps per runner | CPU   | GPU   | Execution Time         | Notes                        |Train Sharpe |
 |------------------|------------------|-------|-------|------------------------|------------------------------|------------|
 |10,240 | 2,048 | 2x    | 1xT4 |6.61 s ± 678 ms | mean ± std. dev. of 5 runs, 1 loop each |1.2 |
-|10,240 | 5,120 | 2x    | 1xT4 |19.8 s ± 1.25 | mean ± std. dev. of 5 runs, 1 loop each | 1.5 |
+|10,240 | 5,120 | 2x    | 1xT4 |19.8 s ± 1.25s | mean ± std. dev. of 5 runs, 1 loop each | 1.5 |
 
