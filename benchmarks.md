@@ -3,7 +3,9 @@
 ## SB-3 | PPO | 252 timestamps (daily)
 
 ```
-  "n_steps": 2048, # rllib 'batch_size',
+  "n_envs": 1 # number of vectorized envs
+
+  "n_steps": 2048, # rllib 'batch_size'
   "n_epochs":10,
   "batch_size": 128, # rllib 'minibatch_size'
 ```
@@ -16,9 +18,14 @@
 
 ##  RLLib | PPO | 252 timestamps (daily)
 ```
+    .environment(
+        num_envs=1
+    )
+    .training(
         train_batch_size=2048,
         num_epochs=10,
         minibatch_size=128,
+    )
 ```
 
 | Configuration         | Execution Time         | Notes                        |
