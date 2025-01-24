@@ -53,6 +53,6 @@
     )
 ```
 
-| Total timesteps | CPU   | GPU   | Execution Time         | Notes                        |Train Sharpe |
-|------------------|-------|-------|------------------------|------------------------------|------------|
-|2,048| 2x    | 1xT4 |7.15 s ± 0 ns |mean ± std. dev. of 1 run, 5 loops each)|1.2 |
+| Total timesteps| Steps per env runner | CPU   | GPU   | Execution Time         | Notes                        |Train Sharpe |
+|------------------|------------------|-------|-------|------------------------|------------------------------|------------|
+|10,240 | 2,048 | 2x    | 1xT4 |7.15 s ± 0 ns |mean ± std. dev. of 1 run, 5 loops each)|1.2 |
