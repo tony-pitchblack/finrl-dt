@@ -2,6 +2,7 @@
 
 ## SB-3 | PPO | 252 timestamps (daily)
 
+### Config #1
 ```
   "n_envs": 1 # number of vectorized envs
 
@@ -17,7 +18,12 @@
 
 
 ##  RLLib | PPO | 252 timestamps (daily)
+
+### Config #1
 ```
+    .env_runners(
+        num_env_runners=0,
+    )
     .environment(
         num_envs=1
     )
