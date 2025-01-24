@@ -13,6 +13,7 @@
 
 | Total timesteps | CPU   | GPU   | Execution Time         | Notes                        |
 |------------------|-------|-------|------------------------|------------------------------|
+|10,240 | 2x    | 1xT4 | 34.5 s ± 0 ns | mean ± std. dev. of 1 run, 1 loop each |
 | 50,000           | 2x    | -     | 3min 10s ± 5.17s       | Mean ± std. dev. of 5 runs, 1 loop each |
 | 50,000           | 2x    | 1xT4  | 3min 4s ± 0ns          | Mean ± std. dev. of 1 run, 1 loop each |
 |200_000 | 2x    | 1xT4 | 12min 8s ± 0 ns | mean ± std. dev. of 1 run, 1 loop each |
@@ -34,6 +35,8 @@
 
 | Total timesteps | CPU   | GPU   | Execution Time         | Notes                        |
 |------------------|-------|-------|------------------------|------------------------------|
+|10,240 | 2x    | 1xT4 | 45.4 s ± 0 ns | mean ± std. dev. of 1 run, 1 loop each |
 | 50,000           | 2x    | -     | 4min 31s ± 5.06s       | Mean ± std. dev. of 5 runs, 1 loop each |
 | 50,000           | 2x    | 1xT4  | 3min 52s ± 0ns         | Mean ± std. dev. of 1 run, 1 loop each |
-|200_000 | 2x    | 1xT4 | 13min 47s ± 0 ns | mean ± std. dev. of 1 run, 1 loop each |
+|200,000 | 2x    | 1xT4 | 13min 47s ± 0 ns | mean ± std. dev. of 1 run, 1 loop each |
+
