@@ -36,7 +36,7 @@
 | Total steps | Envs | Backend | CPU   | GPU   | Execution Time         | Notes                        | Train Sharpe |
 |-------------|------|-------|-------|-------|------------------------|------------------------------|--------------|
 | 50,000      | 1    | Pandas   | 2x    | -     | 7min 49s ± 0 ns   | Mean ± std. dev. of 1 runs, 1 loop each | 2    |
-| 50,000      | 1    | Numpy    | 2x    | -     | 5min 25s ± 0 ns  | Mean ± std. dev. of 1 runs, 1 loop each | 2      |
+| 50,000      | 1    | Numpy    | 2x    | -     | 5min 25s ± 0 ns  | Mean ± std. dev. of 1 runs, 1 loop each | 2.5      |
 
 
 #### CPU vs GPU (old table, train only)
