@@ -9,16 +9,17 @@
   "batch_size": 128, # rllib 'minibatch_size'
 ```
 
+(old table, train only)
 | Total steps | Envs | Async | CPU   | GPU   | Execution Time         | Notes                        | Train Sharpe |
-|-------------|------|-------|-------|-------|------------------------|-----------------------------|--------------|
-| 50,000      | 1    | No    | 2x    | -     | 3min 10s ± 5.17s       | Mean ± std. dev. of 5 runs, 1 loop each | 2.8          |
-| 50,000      | 1    | No    | 2x    | 1xT4  | 3min 4s ± 0ns          | Mean ± std. dev. of 1 run, 1 loop each  | 2.8          |
-| 50,000      | 1    | No    | 2x    | -     | 39.2 s ± 1.83 s        | Mean ± std. dev. of 2 run, 1 loop each  | 1            |
-| 50,000      | 1    | YES   | 2x    | -     | ??                     | Mean ± std. dev. of 2 run, 1 loop each  | 1            |
-| 200,000     | 1    | No    | 2x    | 1xT4  | 12min 8s ± 0 ns        | Mean ± std. dev. of 1 run, 1 loop each  | 4            |
-| 10,240      | 1    | No    | 2x    | 1xT4  | 34.5 s ± 0 ns          | Mean ± std. dev. of 1 run, 1 loop each  | 2.4          |
-| 10,240      | 2    | No    | 2x    | 1xT4  | 22.7 s ± 1.18 s        | Mean ± std. dev. of 5 runs, 1 loop each | 1.9          |
-| 10,240      | 5    | No    | 2x    | 1xT4  | ???                    | ???                          | ???          |
+|-----------|------|-------|-------|-------|--------------------|-----------------------------|--------------|
+| 50,000    | 1    | No    | 2x    | -     | 3min 10s ± 5.17s    | Mean ± std. dev. of 5 runs, 1 loop each | 2.8          |
+| 50,000   | 1    | No    | 2x    | 1xT4  | 3min 4s ± 0ns          | Mean ± std. dev. of 1 run, 1 loop each  | 2.8          |
+| 50,000   | 1    | No    | 2x    | -     | 39.2 s ± 1.83 s        | Mean ± std. dev. of 2 run, 1 loop each  | 1            |
+| 50,000  | 1    | YES   | 2x    | -     | ??                     | Mean ± std. dev. of 2 run, 1 loop each  | 1            |
+| 200,000   | 1    | No    | 2x    | 1xT4  | 12min 8s ± 0 ns    | Mean ± std. dev. of 1 run, 1 loop each  | 4            |
+| 10,240   | 1    | No    | 2x    | 1xT4  | 34.5 s ± 0 ns          | Mean ± std. dev. of 1 run, 1 loop each  | 2.4          |
+| 10,240   | 2    | No    | 2x    | 1xT4  | 22.7 s ± 1.18 s        | Mean ± std. dev. of 5 runs, 1 loop each | 1.9          |
+| 10,240    | 5    | No    | 2x    | 1xT4  | ???                    | ???                          | ???          |
 
 
 ##  RLLib | PPO | 252 timestamps (daily)
@@ -31,14 +32,19 @@
         minibatch_size=128,
     )
 ```
+#### Pandas vs Numpy env (train + eval)
+| Total steps | Envs | Backend | CPU   | GPU   | Execution Time         | Notes                        | Train Sharpe |
+|-------------|------|-------|-------|-------|------------------------|------------------------------|--------------|
+| 50,000      | 1    | Pandas   | 2x    | -     | 7min 49s ± 0 ns   | Mean ± std. dev. of 1 runs, 1 loop each | 2    |
+| 50,000      | 1    | Numpy    | 2x    | -     | 5min 25s ± 0 ns  | Mean ± std. dev. of 1 runs, 1 loop each | 2      |
 
-#### CPU vs GPU
+
+#### CPU vs GPU (old table, train only)
 | Total steps | Envs | Async | CPU   | GPU   | Execution Time         | Notes                        | Train Sharpe |
 |-------------|------|-------|-------|-------|------------------------|------------------------------|--------------|
-| 50,000      | 1    | No    | 2x    | -     | 4min 31s ± 5.06s   | Mean ± std. dev. of 5 runs, 1 loop each | 2.8          |
-| 50,000      | 1    | No    | 2x    | 1xT4  | 3min 52s ± 0ns     | Mean ± std. dev. of 1 run, 1 loop each  | 2.8          |
-| 200,000     | 1    | No    | 2x    | 1xT4  | 13min 47s ± 0 ns   | Mean ± std. dev. of 1 run, 1 loop each  | 4            |
-
+| 50,000      | 1    | No    | 2x    | -     | 4min 31s ± 5.06s   | Mean ± std. dev. of 5 runs, 1 loop each | 2.8   |
+| 50,000      | 1    | No    | 2x    | 1xT4  | 3min 52s ± 0ns     | Mean ± std. dev. of 1 run, 1 loop each  | 2.8   |
+| 200,000     | 1    | No    | 2x    | 1xT4  | 13min 47s ± 0 ns   | Mean ± std. dev. of 1 run, 1 loop each  | 4     |
 
 #### Number of envs
 
