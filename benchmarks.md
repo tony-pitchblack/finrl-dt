@@ -68,6 +68,10 @@ Increase number of runners, same envs per runner (1) -> no speedup, lower accura
 | 10,240    | 1    | 5  | No    | 2x    | -  | 1min 28s ± 610 ms   | mean ± std. dev. of 2 runs, 1 loop each  | 1.6 |
 | 10,240    | 1    | 10 | No    | 2x    | -  | 1min 35s ± 216 ms   | mean ± std. dev. of 2 runs, 1 loop each  | 1.1 |
 
+| Total steps | Envs per runner | Runners | Async | CPU   | GPU   | Execution Time  | Notes     | Train Sharpe |
+|-----------|------|-----|-------|-------|-------|------------------------|-------------|----------|
+| 10,240    | 5    | 2  | No    | 2x    | -  | 1min 6s ± 3.16 s   | mean ± std. dev. of 2 runs, 1 loop each  | 1.3 |
+| 10,240    | 5    | 5  | No    | 2x    | -  | 1min 16s ± 7.06 s   | mean ± std. dev. of 2 runs, 1 loop each  | 0.9  |
 
 #### Sync vs Async
 
