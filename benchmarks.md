@@ -1,6 +1,6 @@
 # Benchmarks
 
-## SB-3 | PPO | 252 timestamps (daily)
+## Stable Baselines 3 | PPO | 252 timestamps (daily)
 
 ### Config #1
 ```
@@ -22,7 +22,7 @@
 | 10,240    | 5    | No    | 2x    | 1xT4  | ???                    | ???                          | ???          |
 
 
-##  RLLib | PPO | 252 timestamps (daily)
+##  Ray RLLib | PPO | 252 timestamps (daily)
 
 ### Config #1
 ```
@@ -33,6 +33,7 @@
     )
 ```
 #### Pandas vs Numpy env (train + eval)
+Training with numpy env is faster than wtih pandas env (up to 30%)
 | Total steps | Envs | Backend | CPU   | GPU   | Execution Time         | Notes                        | Train Sharpe |
 |-------------|------|-------|-------|-------|------------------------|------------------------------|--------------|
 | 50,000      | 1    | Pandas   | 2x    | -     | 7min 49s ± 0 ns   | Mean ± std. dev. of 1 runs, 1 loop each | 2    |
