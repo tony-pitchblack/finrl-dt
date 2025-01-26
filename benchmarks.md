@@ -1,27 +1,5 @@
 # Benchmarks
 
-## Stable Baselines 3 | PPO | 252 timestamps (daily)
-
-### Config #1
-```
-  "n_steps": 2048, # rllib 'batch_size'
-  "n_epochs":10,
-  "batch_size": 128, # rllib 'minibatch_size'
-```
-
-(old table, train only)
-| Total steps | Envs | Async | CPU   | GPU   | Execution Time         | Notes                        | Train Sharpe |
-|-----------|------|-------|-------|-------|--------------------|-----------------------------|--------------|
-| 50,000    | 1    | No    | 2x    | -     | 3min 10s ± 5.17s    | Mean ± std. dev. of 5 runs, 1 loop each | 2.8          |
-| 50,000   | 1    | No    | 2x    | 1xT4  | 3min 4s ± 0ns          | Mean ± std. dev. of 1 run, 1 loop each  | 2.8          |
-| 50,000   | 1    | No    | 2x    | -     | 39.2 s ± 1.83 s        | Mean ± std. dev. of 2 run, 1 loop each  | 1            |
-| 50,000  | 1    | YES   | 2x    | -     | ??                     | Mean ± std. dev. of 2 run, 1 loop each  | 1            |
-| 200,000   | 1    | No    | 2x    | 1xT4  | 12min 8s ± 0 ns    | Mean ± std. dev. of 1 run, 1 loop each  | 4            |
-| 10,240   | 1    | No    | 2x    | 1xT4  | 34.5 s ± 0 ns          | Mean ± std. dev. of 1 run, 1 loop each  | 2.4          |
-| 10,240   | 2    | No    | 2x    | 1xT4  | 22.7 s ± 1.18 s        | Mean ± std. dev. of 5 runs, 1 loop each | 1.9          |
-| 10,240    | 5    | No    | 2x    | 1xT4  | ???                    | ???                          | ???          |
-
-
 ##  Ray RLLib | PPO | 252 timestamps (daily)
 
 ### Config #1
@@ -41,11 +19,12 @@ Training with numpy env is faster than wtih pandas env (up to 30%)
 
 
 #### CPU vs GPU (old table, train only)
+Use GPU -> faster training (up to 15%, _**MORE TESTING NEEDED**_), same accuracy
+
 | Total steps | Envs | Async | CPU   | GPU   | Execution Time         | Notes                        | Train Sharpe |
 |-------------|------|-------|-------|-------|------------------------|------------------------------|--------------|
 | 50,000      | 1    | No    | 2x    | -     | 4min 31s ± 5.06s   | Mean ± std. dev. of 5 runs, 1 loop each | 2.8   |
 | 50,000      | 1    | No    | 2x    | 1xT4  | 3min 52s ± 0ns     | Mean ± std. dev. of 1 run, 1 loop each  | 2.8   |
-| 200,000     | 1    | No    | 2x    | 1xT4  | 13min 47s ± 0 ns   | Mean ± std. dev. of 1 run, 1 loop each  | 4     |
 
 #### Number of envs
 
@@ -92,6 +71,27 @@ Async env -> slower training, same accuracy
 | 10,240      | 5    | Yes   | 2x    | -     | 59.5 s ± 1.09 s  | Mean ± std. dev. of 2 runs, 1 loop each | 0.8          |
 | 10,240      | 2    | No    | 2x    | -     | 53.7 s ± 1.21 s    | Mean ± std. dev. of 2 runs, 1 loop each | ???         |
 | 10,240      | 2    | Yes   | 2x    | -     | 1min ± 1.9 s     | Mean ± std. dev. of 2 runs, 1 loop each | ???          |
+
+## Stable Baselines 3 | PPO | 252 timestamps (daily)
+
+### Config #1
+```
+  "n_steps": 2048, # rllib 'batch_size'
+  "n_epochs":10,
+  "batch_size": 128, # rllib 'minibatch_size'
+```
+
+#### All experiments (old table, train only)
+| Total steps | Envs | Async | CPU   | GPU   | Execution Time         | Notes                        | Train Sharpe |
+|-----------|------|-------|-------|-------|--------------------|-----------------------------|--------------|
+| 50,000    | 1    | No    | 2x    | -     | 3min 10s ± 5.17s    | Mean ± std. dev. of 5 runs, 1 loop each | 2.8          |
+| 50,000   | 1    | No    | 2x    | 1xT4  | 3min 4s ± 0ns          | Mean ± std. dev. of 1 run, 1 loop each  | 2.8          |
+| 50,000   | 1    | No    | 2x    | -     | 39.2 s ± 1.83 s        | Mean ± std. dev. of 2 run, 1 loop each  | 1            |
+| 50,000  | 1    | YES   | 2x    | -     | ??                     | Mean ± std. dev. of 2 run, 1 loop each  | 1            |
+| 200,000   | 1    | No    | 2x    | 1xT4  | 12min 8s ± 0 ns    | Mean ± std. dev. of 1 run, 1 loop each  | 4            |
+| 10,240   | 1    | No    | 2x    | 1xT4  | 34.5 s ± 0 ns          | Mean ± std. dev. of 1 run, 1 loop each  | 2.4          |
+| 10,240   | 2    | No    | 2x    | 1xT4  | 22.7 s ± 1.18 s        | Mean ± std. dev. of 5 runs, 1 loop each | 1.9          |
+| 10,240    | 5    | No    | 2x    | 1xT4  | ???                    | ???                          | ???          |
 
 
 
