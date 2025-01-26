@@ -48,14 +48,14 @@
 
 #### Number of envs
 
-Increase envs per runner, same number of runners (2) -> faster training, lower accuracy
+Increase envs per runner, same number of runners (2) -> faster training (up to 25%), lower accuracy
 | Total steps | Envs per runner | Runners | Async | CPU   | GPU   | Execution Time  | Notes     | Train Sharpe |
 |-----------|--------------|---------|-------|-------|-------|------------------------|-------------|----------|
 | 10,240    | 1    | 2  | No    | 2x    | -  | 1min 23s ± 987 ms   | mean ± std. dev. of 2 runs, 1 loop each  | 1.4  |
 | 10,240    | 2    | 2  | No    | 2x    | -  | 1min 8s ± 2.47 s   | mean ± std. dev. of 2 runs, 1 loop each  | 1.7  |
 | 10,240    | 5    | 2  | No    | 2x    | -  | 1min 2s ± 2.02 s  | mean ± std. dev. of 2 runs, 1 loop each  | 0.8  |
 
-Increase envs per runner, same number of runners (5) -> faster training, lower accuracy
+Increase envs per runner, same number of runners (5) -> faster training (up to 20%), lower accuracy
 | Total steps | Envs per runner | Runners | Async | CPU   | GPU   | Execution Time  | Notes     | Train Sharpe |
 |-----------|--------------|---------|-------|-------|-------|------------------------|-------------|----------|
 | 10,240    | 1    | 5  | No    | 2x    | 1xT4  | 59 s ± 458 ms   | mean ± std. dev. of 2 runs, 1 loop each  | 1.4 |
@@ -65,7 +65,7 @@ Increase envs per runner, same number of runners (5) -> faster training, lower a
 
 #### Number of env runners
 
-Increase number of runners, same envs per runner (1) -> no speedup, lower accuracy
+Increase number of runners, same envs per runner (1) -> no training speedup, lower accuracy
 
 | Total steps | Envs per runner | Runners | Async | CPU   | GPU   | Execution Time  | Notes     | Train Sharpe |
 |-----------|--------------|---------|-------|-------|-------|------------------------|-------------|----------|
@@ -79,8 +79,8 @@ Increase number of runners, same envs per runner (1) -> no speedup, lower accura
 | 10,240    | 5    | 2  | No    | 2x    | -  | 1min 6s ± 3.16 s   | mean ± std. dev. of 2 runs, 1 loop each  | 1.3 |
 | 10,240    | 5    | 5  | No    | 2x    | -  | 1min 16s ± 7.06 s   | mean ± std. dev. of 2 runs, 1 loop each  | 0.9  |
 
-#### Sync vs Async
-
+#### Sync env vs Async env
+Async env -> slower training, same accuracy
 | Total steps | Envs | Async | CPU   | GPU   | Execution Time         | Notes                        | Train Sharpe |
 |-------------|------|-------|-------|-------|------------------------|------------------------------|--------------|
 | 10,240      | 2    | No    | 2x    | 1xT4  | 53.8 s ± 0 ns     | Mean ± std. dev. of 1 runs, 1 loop each | 1.6 |         |
